@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'sales_screen.dart';
+import 'sales_screen.dart'; // make sure this file exists in /lib
 
 class HomeScreen extends StatefulWidget {
   final String username;
@@ -29,9 +29,9 @@ class _HomeScreenState extends State<HomeScreen> {
   final inventoryData = {'inStock': 5000, 'reStock': 150};
 
   final topSelling = [
-    {'name': 'Concealer', 'sold': 24, 'price': 'Ex.'},
-    {'name': 'SPF 50+++', 'sold': 70, 'price': 'Ex.'},
-    {'name': 'Rejuvenating Set', 'sold': 12, 'price': 'Ex.'},
+    {'name': 'Concealer', 'sold': 24, 'price': '₱199'},
+    {'name': 'SPF 50+++', 'sold': 70, 'price': '₱349'},
+    {'name': 'Rejuvenating Set', 'sold': 12, 'price': '₱499'},
   ];
 
   @override
@@ -93,12 +93,22 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 const SizedBox(width: 10),
                 Expanded(
-                  child: dashboardCard(
-                    icon: Icons.attach_money_rounded,
-                    title: salesData['salesAmount'].toString(),
-                    subtitle: "Sales",
-                    extra: salesData['salesChange'].toString(),
-                    color: Colors.orange.shade50,
+                  child: GestureDetector(
+                    onTap: () {
+                      // Navigate to SalesScreen when tapped
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => const SalesScreen()),
+                      );
+                    },
+                    child: dashboardCard(
+                      icon: Icons.attach_money_rounded,
+                      title: salesData['salesAmount'].toString(),
+                      subtitle: "Sales",
+                      extra: salesData['salesChange'].toString(),
+                      color: Colors.orange.shade50,
+                    ),
                   ),
                 ),
               ],
@@ -134,9 +144,19 @@ class _HomeScreenState extends State<HomeScreen> {
         unselectedItemColor: Colors.black54,
         currentIndex: _selectedIndex,
         onTap: (index) {
-          setState(() {
-            _selectedIndex = index;
-          });
+          if (index == 0) {
+            // Already on Dashboard — just stay here
+            setState(() => _selectedIndex = 0);
+          } else if (index == 1) {
+            setState(() => _selectedIndex = 1);
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const SalesScreen()),
+            ).then((_) {
+              // When returning from SalesScreen, re-highlight Dashboard
+              setState(() => _selectedIndex = 0);
+            });
+          }
         },
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.dashboard_rounded), label: "Dashboard"),
@@ -185,8 +205,7 @@ class _HomeScreenState extends State<HomeScreen> {
         children: [
           Icon(icon, color: Colors.pinkAccent),
           const SizedBox(height: 8),
-          Text(title,
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+          Text(title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
           const SizedBox(height: 4),
           Text(subtitle, style: const TextStyle(color: Colors.black54)),
           Text(extra, style: const TextStyle(color: Colors.green)),
@@ -228,13 +247,11 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title,
-              style: TextStyle(color: color, fontWeight: FontWeight.bold)),
+          Text(title, style: TextStyle(color: color, fontWeight: FontWeight.bold)),
           const SizedBox(height: 10),
           Center(
               child: Text(value,
-                  style: const TextStyle(
-                      fontSize: 24, fontWeight: FontWeight.bold))),
+                  style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold))),
         ],
       ),
     );
@@ -252,18 +269,9 @@ class _HomeScreenState extends State<HomeScreen> {
         children: [
           Row(
             children: const [
-              Expanded(
-                  child: Text("Name",
-                      style:
-                      TextStyle(fontWeight: FontWeight.bold, fontSize: 14))),
-              Expanded(
-                  child: Text("Sold",
-                      style:
-                      TextStyle(fontWeight: FontWeight.bold, fontSize: 14))),
-              Expanded(
-                  child: Text("Price",
-                      style:
-                      TextStyle(fontWeight: FontWeight.bold, fontSize: 14))),
+              Expanded(child: Text("Name", style: TextStyle(fontWeight: FontWeight.bold))),
+              Expanded(child: Text("Sold", style: TextStyle(fontWeight: FontWeight.bold))),
+              Expanded(child: Text("Price", style: TextStyle(fontWeight: FontWeight.bold))),
             ],
           ),
           const Divider(),
@@ -273,8 +281,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 Expanded(child: Text(item['name'].toString())),
                 Expanded(child: Text(item['sold'].toString())),
                 Expanded(child: Text(item['price'].toString())),
-
-
               ],
             ),
         ],
