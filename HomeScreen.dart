@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'sales_screen.dart'; // make sure this file exists in /lib
+import 'sales_screen.dart';
+import 'inventory_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final String username;
@@ -139,16 +140,15 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
-        backgroundColor: const Color(0xFFF8EDF3),
         selectedItemColor: Colors.pink,
         unselectedItemColor: Colors.black54,
         currentIndex: _selectedIndex,
         onTap: (index) {
+          setState(() => _selectedIndex = index);
+
           if (index == 0) {
-            // Already on Dashboard — just stay here
-            setState(() => _selectedIndex = 0);
           } else if (index == 1) {
-            setState(() => _selectedIndex = 1);
+            // Navigate to Sales Screen
             Navigator.push(
               context,
               MaterialPageRoute(builder: (context) => const SalesScreen()),
@@ -156,6 +156,25 @@ class _HomeScreenState extends State<HomeScreen> {
               // When returning from SalesScreen, re-highlight Dashboard
               setState(() => _selectedIndex = 0);
             });
+          } else if (index == 2) {
+            // Navigate to Inventory Screen
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const InventoryPage()),
+            ).then((_) {
+              // When returning from InventoryScreen, re-highlight Dashboard
+              setState(() => _selectedIndex = 0);
+            });
+          } else if (index == 3) {
+            // Report - you can add navigation here later
+            // For now, just show a placeholder
+            _showPlaceholderMessage("Report Screen");
+            setState(() => _selectedIndex = 0);
+          } else if (index == 4) {
+            // Profile - you can add navigation here later
+            // For now, just show a placeholder
+            _showPlaceholderMessage("Profile Screen");
+            setState(() => _selectedIndex = 0);
           }
         },
         items: const [
@@ -165,6 +184,16 @@ class _HomeScreenState extends State<HomeScreen> {
           BottomNavigationBarItem(icon: Icon(Icons.receipt_long), label: "Report"),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
         ],
+      ),
+    );
+  }
+
+  void _showPlaceholderMessage(String screenName) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('$screenName - Coming Soon!'),
+        duration: const Duration(seconds: 2),
+        backgroundColor: Colors.pink,
       ),
     );
   }
@@ -208,7 +237,10 @@ class _HomeScreenState extends State<HomeScreen> {
           Text(title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
           const SizedBox(height: 4),
           Text(subtitle, style: const TextStyle(color: Colors.black54)),
-          Text(extra, style: const TextStyle(color: Colors.green)),
+          Text(extra, style: TextStyle(
+              color: extra.contains('-') ? Colors.red : Colors.green,
+              fontWeight: FontWeight.w500
+          )),
         ],
       ),
     );
@@ -276,12 +308,15 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           const Divider(),
           for (var item in topSelling)
-            Row(
-              children: [
-                Expanded(child: Text(item['name'].toString())),
-                Expanded(child: Text(item['sold'].toString())),
-                Expanded(child: Text(item['price'].toString())),
-              ],
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8.0),
+              child: Row(
+                children: [
+                  Expanded(child: Text(item['name'].toString())),
+                  Expanded(child: Text(item['sold'].toString())),
+                  Expanded(child: Text(item['price'].toString())),
+                ],
+              ),
             ),
         ],
       ),

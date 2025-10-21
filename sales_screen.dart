@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'HomeScreen.dart';
+import 'inventory_screen.dart';
 import 'make_a_sale.dart';
+import 'sales_history_page.dart';
 
 class SalesScreen extends StatefulWidget {
   const SalesScreen({Key? key}) : super(key: key);
@@ -20,8 +22,16 @@ class _SalesScreenState extends State<SalesScreen> {
       );
     } else if (index == 1) {
       // Already on Sales page
+    } else if (index == 2) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const InventoryPage()),
+      );
+    } else if (index == 3) {
+      // Future: navigate to Report page
+    } else if (index == 4) {
+      // Future: navigate to Profile page
     }
-    // You can add more navigation if you build the other pages later
   }
 
   @override
@@ -121,7 +131,10 @@ class _SalesScreenState extends State<SalesScreen> {
                 Expanded(
                   child: GestureDetector(
                     onTap: () {
-                      // handle sales history
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const SalesHistoryPage()),
+                      );
                     },
                     child: Container(
                       padding: const EdgeInsets.all(20),
@@ -130,15 +143,18 @@ class _SalesScreenState extends State<SalesScreen> {
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(15),
                         boxShadow: const [
-                          BoxShadow(color: Colors.black12, blurRadius: 4)
+                          BoxShadow(color: Colors.black12, blurRadius: 4),
                         ],
                       ),
                       child: const Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.check_box_outlined, size: 35, color: Colors.black87),
+                          Icon(Icons.history, size: 35, color: Colors.black87),
                           SizedBox(height: 10),
-                          Text("Sales History",
-                              style: TextStyle(fontWeight: FontWeight.bold)),
+                          Text(
+                            "Sales History",
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
                         ],
                       ),
                     ),
@@ -178,7 +194,6 @@ class _SalesScreenState extends State<SalesScreen> {
       // Bottom Navigation Bar
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
-        backgroundColor: const Color(0xFFF8EDF3),
         selectedItemColor: Colors.pink,
         unselectedItemColor: Colors.black54,
         currentIndex: _selectedIndex,

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'brand_products_page.dart';
 
 class MakeSaleScreen extends StatelessWidget {
   const MakeSaleScreen({Key? key}) : super(key: key);
@@ -73,9 +74,14 @@ class MakeSaleScreen extends StatelessWidget {
                         backgroundImage: AssetImage(brands[index]['logo']!),
                         radius: 20,
                       ),
-                      onTap: () {
-                        // Placeholder for next page
-                      },
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => BrandProductsPage(brandName: brands[index]['name']!),
+                            ),
+                          );
+                        },
                     ),
                   );
                 },
