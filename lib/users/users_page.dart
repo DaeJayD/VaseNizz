@@ -1,8 +1,54 @@
 import 'package:flutter/material.dart';
+import 'package:vasenizzpos/inventory/inventory_screen.dart';
 import 'package:vasenizzpos/main.dart';
+import 'package:vasenizzpos/dashboard/homescreen.dart';
+import 'package:vasenizzpos/sales/sales_screen.dart';
+import 'package:vasenizzpos/reports/reports_page.dart';
+import 'emp_profile.dart';
 
-class UsersPage extends StatelessWidget {
+class UsersPage extends StatefulWidget {
   const UsersPage({super.key});
+
+  @override
+  State<UsersPage> createState() => _UsersPageState();
+}
+
+class _UsersPageState extends State<UsersPage> {
+  int _selectedIndex = 4;
+
+  void _onItemTapped(int index) {
+    if (index == _selectedIndex) return;
+
+    Widget nextPage;
+    switch (index) {
+      case 0:
+        nextPage = HomeScreen(username: '');
+        break;
+      case 1:
+        nextPage = SalesScreen();
+        break;
+      case 2:
+        nextPage = InventoryPage();
+        break;
+      case 3:
+        nextPage = ViewReportsPage();
+        break;
+      case 4:
+        nextPage = UsersPage();
+        break;
+      default:
+        return;
+    }
+
+    Navigator.pushReplacement(
+      context,
+      PageRouteBuilder(
+        pageBuilder: (context, animation1, animation2) => nextPage,
+        transitionDuration: Duration.zero,
+        reverseTransitionDuration: Duration.zero,
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -16,12 +62,12 @@ class UsersPage extends StatelessWidget {
           children: [
             const CircleAvatar(
               radius: 25,
-              backgroundImage: AssetImage('assets/logo.png'), // Replace with your logo
+              backgroundImage: AssetImage('assets/logo.png'),
             ),
             const SizedBox(width: 10),
-            Column(
+            const Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: const [
+              children: [
                 Text(
                   "Manage User",
                   style: TextStyle(
@@ -41,17 +87,16 @@ class UsersPage extends StatelessWidget {
         actions: const [
           Padding(
             padding: EdgeInsets.only(right: 15),
-            child: Icon(Icons.notifications_none, color: Colors.black54, size: 26),
+            child:
+            Icon(Icons.notifications_none, color: Colors.black54, size: 26),
           ),
         ],
       ),
-
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // User Profile Card
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
@@ -72,13 +117,15 @@ class UsersPage extends StatelessWidget {
                         Text("(03085)  Owner",
                             style: TextStyle(color: Colors.black54)),
                         SizedBox(height: 2),
-                        Text("090322123", style: TextStyle(color: Colors.black54)),
+                        Text("090322123",
+                            style: TextStyle(color: Colors.black54)),
                       ],
                     ),
                   ),
                   TextButton.icon(
                     onPressed: () {},
-                    icon: const Icon(Icons.edit, color: Colors.redAccent, size: 18),
+                    icon: const Icon(Icons.edit,
+                        color: Colors.redAccent, size: 18),
                     label: const Text(
                       "Edit Profile",
                       style: TextStyle(color: Colors.redAccent),
@@ -88,13 +135,12 @@ class UsersPage extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 16),
-
-            // Manage Users Button
             Center(
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.black,
-                  padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
+                  padding:
+                  const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),
@@ -111,8 +157,6 @@ class UsersPage extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 24),
-
-            // Create New Section
             const Text(
               "Create New",
               style: TextStyle(
@@ -122,7 +166,6 @@ class UsersPage extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 12),
-
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
@@ -133,25 +176,28 @@ class UsersPage extends StatelessWidget {
               child: Column(
                 children: [
                   buildTextField("Name", "Employee 1"),
-                  buildTextField("Phone Number", "Ex. No"),
+                  buildTextField("Phone Number", "Ex. 09123456789"),
                   buildTextField("Date of Birth", "yyyy/mm/dd"),
                   buildTextField("User ID", "0.xxxx"),
                   const SizedBox(height: 8),
-
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Flexible(
                         child: DropdownButtonFormField<String>(
                           decoration: InputDecoration(
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                            contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 6),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(6),
                             ),
                           ),
                           hint: const Text("Assign Branch"),
                           items: ["Branch 1", "Branch 2"].map((val) {
-                            return DropdownMenuItem(value: val, child: Text(val));
+                            return DropdownMenuItem(
+                              value: val,
+                              child: Text(val),
+                            );
                           }).toList(),
                           onChanged: (val) {},
                         ),
@@ -160,14 +206,18 @@ class UsersPage extends StatelessWidget {
                       Flexible(
                         child: DropdownButtonFormField<String>(
                           decoration: InputDecoration(
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                            contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 6),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(6),
                             ),
                           ),
                           hint: const Text("Assign Role"),
                           items: ["Cashier", "Staff", "Manager"].map((val) {
-                            return DropdownMenuItem(value: val, child: Text(val));
+                            return DropdownMenuItem(
+                              value: val,
+                              child: Text(val),
+                            );
                           }).toList(),
                           onChanged: (val) {},
                         ),
@@ -175,11 +225,11 @@ class UsersPage extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 12),
-
                   ElevatedButton.icon(
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.greenAccent.shade100,
-                      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 10, horizontal: 16),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),
@@ -188,15 +238,44 @@ class UsersPage extends StatelessWidget {
                     icon: const Icon(Icons.add, color: Colors.green),
                     label: const Text(
                       "Create User",
-                      style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        color: Colors.green,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ],
               ),
             ),
             const SizedBox(height: 20),
-
-            // Log out button
+            Center(
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.pinkAccent,
+                  padding:
+                  const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => const EmployeeProfilePage()),
+                  );
+                },
+                child: const Text(
+                  "VIEW EMPLOYEE PROFILE",
+                  style: TextStyle(
+                    letterSpacing: 1,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
             Center(
               child: TextButton(
                 onPressed: () {
@@ -218,44 +297,27 @@ class UsersPage extends StatelessWidget {
           ],
         ),
       ),
-
-      // Bottom Navigation Bar
       bottomNavigationBar: BottomNavigationBar(
-        currentIndex: 4,
-        selectedItemColor: Colors.redAccent,
-        unselectedItemColor: Colors.black54,
         type: BottomNavigationBarType.fixed,
-        onTap: (index) {
-          switch (index) {
-            case 0:
-              Navigator.pushNamed(context, '/dashboard');
-              break;
-            case 1:
-              Navigator.pushNamed(context, '/sales');
-              break;
-            case 2:
-              Navigator.pushNamed(context, '/inventory');
-              break;
-            case 3:
-              Navigator.pushNamed(context, '/report');
-              break;
-            case 4:
-            // already on Manage
-              break;
-          }
-        },
+        currentIndex: _selectedIndex,
+        selectedItemColor: Colors.pink,
+        unselectedItemColor: Colors.black54,
+        onTap: _onItemTapped,
         items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.dashboard), label: "Dashboard"),
-          BottomNavigationBarItem(icon: Icon(Icons.shopping_cart), label: "Sales"),
-          BottomNavigationBarItem(icon: Icon(Icons.inventory), label: "Inventory"),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.dashboard_rounded), label: "Dashboard"),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.shopping_cart), label: "Sales"),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.inventory), label: "Inventory"),
           BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: "Report"),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: "Manage"),
+          BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
         ],
       ),
     );
   }
 
-  Widget buildTextField(String label, String hint) {
+  static Widget buildTextField(String label, String hint) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: TextField(

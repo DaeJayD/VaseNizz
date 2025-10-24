@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:vasenizzpos/dashboard/HomeScreen.dart';
+import 'package:vasenizzpos/dashboard/homescreen.dart';
 import 'package:vasenizzpos/inventory/inventory_screen.dart';
-import 'package:vasenizzpos/reports/view_reports.dart';
+import 'package:vasenizzpos/reports/reports_page.dart';
 import 'package:vasenizzpos/users/users_page.dart';
 import 'package:vasenizzpos/products/brand_products_page.dart';
 

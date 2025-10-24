@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:vasenizzpos/dashboard/HomeScreen.dart';
 import 'package:vasenizzpos/sales/sales_screen.dart';
+import 'package:vasenizzpos/reports/reports_page.dart';
+import 'package:vasenizzpos/users/users_page.dart';
 import 'package:vasenizzpos/branches/carmen_branch.dart';
 import 'inventory_history.dart';
 
@@ -55,29 +57,38 @@ class _InventoryPageState extends State<InventoryPage> {
   void _onItemTapped(int index) {
     if (index == _selectedIndex) return;
 
+    Widget nextPage;
     switch (index) {
       case 0:
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const HomeScreen(username: 'User')),
-        );
+        nextPage = HomeScreen(username: '');
         break;
       case 1:
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const SalesScreen()),
-        );
+        nextPage = SalesScreen();
         break;
       case 2:
-        break; // Already in Inventory
+        nextPage = InventoryPage();
+        break;
+      case 3:
+        nextPage = ViewReportsPage();
+        break;
+      case 4:
+        nextPage = UsersPage();
+        break;
+      default:
+        return;
     }
 
-    setState(() {
-      _selectedIndex = index;
-    });
+    Navigator.pushReplacement(
+      context,
+      PageRouteBuilder(
+        pageBuilder: (context, animation1, animation2) => nextPage,
+        transitionDuration: Duration.zero,
+        reverseTransitionDuration: Duration.zero,
+      ),
+    );
   }
 
-  // 🔹 Popup dialog function
+  // 🔹 Branch selection dialog
   void _showBranchSelector(BuildContext context) {
     showDialog(
       context: context,
@@ -92,9 +103,10 @@ class _InventoryPageState extends State<InventoryPage> {
               const Text(
                 "SELECT BRANCH",
                 style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.pink,
-                    fontSize: 16),
+                  fontWeight: FontWeight.bold,
+                  color: Colors.pink,
+                  fontSize: 16,
+                ),
               ),
               const SizedBox(height: 20),
               _branchButton(
@@ -106,9 +118,7 @@ class _InventoryPageState extends State<InventoryPage> {
                   Navigator.pop(context);
                   Navigator.push(
                     context,
-                    MaterialPageRoute(
-                      builder: (_) => const ManageAllPage(),
-                    ),
+                    MaterialPageRoute(builder: (_) => const ManageAllPage()),
                   );
                 },
               ),
@@ -159,17 +169,20 @@ class _InventoryPageState extends State<InventoryPage> {
     );
   }
 
-  Widget _branchButton(BuildContext context,
-      {required IconData icon,
+  Widget _branchButton(
+      BuildContext context, {
+        required IconData icon,
         required String label,
         required Color color,
-        required VoidCallback onTap}) {
+        required VoidCallback onTap,
+      }) {
     return ElevatedButton.icon(
       onPressed: onTap,
       icon: Icon(icon, color: Colors.white),
-      label: Text(label,
-          style: const TextStyle(
-              color: Colors.white, fontWeight: FontWeight.bold)),
+      label: Text(
+        label,
+        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+      ),
       style: ElevatedButton.styleFrom(
         backgroundColor: color,
         minimumSize: const Size(double.infinity, 50),
@@ -227,15 +240,16 @@ class _InventoryPageState extends State<InventoryPage> {
               ),
             ),
             const SizedBox(height: 15),
-
             Row(
               children: [
                 Expanded(
                   child: ElevatedButton.icon(
                     onPressed: () => _showBranchSelector(context),
                     icon: const Icon(Icons.bar_chart, size: 26),
-                    label: const Text("📊 Inventory Monitor",
-                        style: TextStyle(fontWeight: FontWeight.bold)),
+                    label: const Text(
+                      "📊 Inventory Monitor",
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.pink[300],
                       foregroundColor: Colors.white,
@@ -253,13 +267,16 @@ class _InventoryPageState extends State<InventoryPage> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                            builder: (context) =>
-                            const InventoryHistoryScreen()),
+                          builder: (context) =>
+                          const InventoryHistoryScreen(),
+                        ),
                       );
                     },
                     icon: const Icon(Icons.history, size: 26),
-                    label: const Text("📜 Inventory History",
-                        style: TextStyle(fontWeight: FontWeight.bold)),
+                    label: const Text(
+                      "📜 Inventory History",
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.pink[200],
                       foregroundColor: Colors.white,
@@ -273,22 +290,24 @@ class _InventoryPageState extends State<InventoryPage> {
               ],
             ),
             const SizedBox(height: 20),
-
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text(
                   "Stock Summary",
                   style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                      color: Colors.black87),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    color: Colors.black87,
+                  ),
                 ),
                 Row(
                   children: [
-                    const Text("Sort by:",
-                        style: TextStyle(
-                            fontSize: 13, fontWeight: FontWeight.w500)),
+                    const Text(
+                      "Sort by:",
+                      style:
+                      TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                    ),
                     const SizedBox(width: 6),
                     DropdownButton<String>(
                       items: const [
@@ -306,7 +325,6 @@ class _InventoryPageState extends State<InventoryPage> {
               ],
             ),
             const SizedBox(height: 10),
-
             Container(
               padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
               decoration: BoxDecoration(
@@ -315,18 +333,45 @@ class _InventoryPageState extends State<InventoryPage> {
               ),
               child: const Row(
                 children: [
-                  Expanded(flex: 1, child: Center(child: Text("S.ID", style: TextStyle(fontWeight: FontWeight.bold)))),
-                  Expanded(flex: 2, child: Center(child: Text("PRODUCT ID", style: TextStyle(fontWeight: FontWeight.bold)))),
-                  Expanded(flex: 2, child: Center(child: Text("BRAND", style: TextStyle(fontWeight: FontWeight.bold)))),
-                  Expanded(flex: 2, child: Center(child: Text("NAME", style: TextStyle(fontWeight: FontWeight.bold)))),
-                  Expanded(flex: 1, child: Center(child: Text("IN", style: TextStyle(fontWeight: FontWeight.bold)))),
-                  Expanded(flex: 1, child: Center(child: Text("OUT", style: TextStyle(fontWeight: FontWeight.bold)))),
-                  Expanded(flex: 1, child: Center(child: Text("QTY.", style: TextStyle(fontWeight: FontWeight.bold)))),
+                  Expanded(
+                      flex: 1,
+                      child: Center(
+                          child: Text("S.ID",
+                              style: TextStyle(fontWeight: FontWeight.bold)))),
+                  Expanded(
+                      flex: 2,
+                      child: Center(
+                          child: Text("PRODUCT ID",
+                              style: TextStyle(fontWeight: FontWeight.bold)))),
+                  Expanded(
+                      flex: 2,
+                      child: Center(
+                          child: Text("BRAND",
+                              style: TextStyle(fontWeight: FontWeight.bold)))),
+                  Expanded(
+                      flex: 2,
+                      child: Center(
+                          child: Text("NAME",
+                              style: TextStyle(fontWeight: FontWeight.bold)))),
+                  Expanded(
+                      flex: 1,
+                      child: Center(
+                          child: Text("IN",
+                              style: TextStyle(fontWeight: FontWeight.bold)))),
+                  Expanded(
+                      flex: 1,
+                      child: Center(
+                          child: Text("OUT",
+                              style: TextStyle(fontWeight: FontWeight.bold)))),
+                  Expanded(
+                      flex: 1,
+                      child: Center(
+                          child: Text("QTY.",
+                              style: TextStyle(fontWeight: FontWeight.bold)))),
                 ],
               ),
             ),
             const SizedBox(height: 8),
-
             Expanded(
               child: Container(
                 decoration: BoxDecoration(
@@ -368,7 +413,6 @@ class _InventoryPageState extends State<InventoryPage> {
           ],
         ),
       ),
-
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
         currentIndex: _selectedIndex,
@@ -376,14 +420,10 @@ class _InventoryPageState extends State<InventoryPage> {
         unselectedItemColor: Colors.black54,
         onTap: _onItemTapped,
         items: const [
-          BottomNavigationBarItem(
-              icon: Icon(Icons.dashboard_rounded), label: "Dashboard"),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.shopping_cart), label: "Sales"),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.inventory_2_outlined), label: "Inventory"),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.receipt_long), label: "Report"),
+          BottomNavigationBarItem(icon: Icon(Icons.dashboard_rounded), label: "Dashboard"),
+          BottomNavigationBarItem(icon: Icon(Icons.shopping_cart), label: "Sales"),
+          BottomNavigationBarItem(icon: Icon(Icons.inventory), label: "Inventory"),
+          BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: "Report"),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
         ],
       ),

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:vasenizzpos/dashboard/HomeScreen.dart';
+import 'package:vasenizzpos/dashboard/homescreen.dart';
 import 'package:vasenizzpos/sales/make_a_sale.dart';
 
 class ReceiptPage extends StatelessWidget {

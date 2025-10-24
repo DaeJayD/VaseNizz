@@ -1,39 +1,54 @@
 import 'package:flutter/material.dart';
-import 'package:vasenizzpos/dashboard/HomeScreen.dart';
+import 'package:vasenizzpos/dashboard/homescreen.dart';
 import 'package:vasenizzpos/inventory/inventory_screen.dart';
+import 'package:vasenizzpos/reports/reports_page.dart';
+import 'package:vasenizzpos/users/users_page.dart';
 import 'make_a_sale.dart';
 import 'sales_history_page.dart';
 
 class SalesScreen extends StatefulWidget {
-  const SalesScreen({Key? key}) : super(key: key);
+  const SalesScreen({super.key});
 
   @override
-  _SalesScreenState createState() => _SalesScreenState();
+  State<SalesScreen> createState() => _SalesScreenState();
 }
 
 class _SalesScreenState extends State<SalesScreen> {
-  int _selectedIndex = 1; // Sales tab active
+  int _selectedIndex = 1;
 
   void _onItemTapped(int index) {
-    if (index == 0) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const HomeScreen(username: 'User')),
-      );
-    } else if (index == 1) {
-      // Already on Sales page
-    } else if (index == 2) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const InventoryPage()),
-      );
-    } else if (index == 3) {
-      // Future: navigate to Report page
-    } else if (index == 4) {
-      // Future: navigate to Profile page
-    }
-  }
+    if (index == _selectedIndex) return;
 
+    Widget nextPage;
+    switch (index) {
+      case 0:
+        nextPage = HomeScreen(username: '');
+        break;
+      case 1:
+        nextPage = SalesScreen();
+        break;
+      case 2:
+        nextPage = InventoryPage();
+        break;
+      case 3:
+        nextPage = ViewReportsPage();
+        break;
+      case 4:
+        nextPage = UsersPage();
+        break;
+      default:
+        return;
+    }
+
+    Navigator.pushReplacement(
+      context,
+      PageRouteBuilder(
+        pageBuilder: (context, animation1, animation2) => nextPage,
+        transitionDuration: Duration.zero,
+        reverseTransitionDuration: Duration.zero,
+      ),
+    );
+  }
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -41,6 +56,7 @@ class _SalesScreenState extends State<SalesScreen> {
       appBar: AppBar(
         backgroundColor: const Color(0xFFF5C6D3),
         elevation: 0,
+        automaticallyImplyLeading: false,
         title: const Text(
           "Sales Manager",
           style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black87),
@@ -52,11 +68,10 @@ class _SalesScreenState extends State<SalesScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header info
             Row(
               children: [
-                CircleAvatar(
-                  backgroundImage: const AssetImage('assets/logo.png'),
+                const CircleAvatar(
+                  backgroundImage: AssetImage('assets/logo.png'),
                   radius: 25,
                   backgroundColor: Colors.white,
                 ),
@@ -72,13 +87,12 @@ class _SalesScreenState extends State<SalesScreen> {
                 ),
                 const Spacer(),
                 IconButton(
-                    onPressed: () {},
-                    icon: const Icon(Icons.notifications_none_rounded, color: Colors.black54))
+                  onPressed: () {},
+                  icon: const Icon(Icons.notifications_none_rounded, color: Colors.black54),
+                ),
               ],
             ),
             const SizedBox(height: 20),
-
-            // Search Bar
             TextField(
               decoration: InputDecoration(
                 hintText: 'Search Sales',
@@ -92,10 +106,7 @@ class _SalesScreenState extends State<SalesScreen> {
                 ),
               ),
             ),
-
             const SizedBox(height: 15),
-
-            // Two big buttons
             Row(
               children: [
                 Expanded(
@@ -108,15 +119,15 @@ class _SalesScreenState extends State<SalesScreen> {
                     },
                     child: Container(
                       padding: const EdgeInsets.all(20),
-                      margin: const EdgeInsets.only(left: 8),
+                      margin: const EdgeInsets.only(right: 8),
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(15),
                         boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 4)],
                       ),
-                      child: Column(
+                      child: const Column(
                         mainAxisAlignment: MainAxisAlignment.center,
-                        children: const [
+                        children: [
                           Icon(Icons.shopping_cart_outlined, size: 35, color: Colors.pink),
                           SizedBox(height: 10),
                           Text(
@@ -142,9 +153,7 @@ class _SalesScreenState extends State<SalesScreen> {
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(15),
-                        boxShadow: const [
-                          BoxShadow(color: Colors.black12, blurRadius: 4),
-                        ],
+                        boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 4)],
                       ),
                       child: const Column(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -162,10 +171,7 @@ class _SalesScreenState extends State<SalesScreen> {
                 ),
               ],
             ),
-
             const SizedBox(height: 25),
-
-            // Recent Sales List
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
@@ -181,17 +187,15 @@ class _SalesScreenState extends State<SalesScreen> {
                     style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
                   ),
                   const Divider(),
-                  saleItem("123456", "Ex. product here", "Sep 12, 2023", "Time here"),
-                  saleItem("123457", "Ex. product here", "Sep 12, 2023", "Time here"),
-                  saleItem("123458", "Ex. product here", "Sep 12, 2023", "Time here"),
+                  saleItem("123456", "Example Product", "Sep 12, 2023", "10:23 AM"),
+                  saleItem("123457", "Example Product", "Sep 13, 2023", "1:15 PM"),
+                  saleItem("123458", "Example Product", "Sep 14, 2023", "4:47 PM"),
                 ],
               ),
             ),
           ],
         ),
       ),
-
-      // Bottom Navigation Bar
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
         selectedItemColor: Colors.pink,
@@ -201,8 +205,8 @@ class _SalesScreenState extends State<SalesScreen> {
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.dashboard_rounded), label: "Dashboard"),
           BottomNavigationBarItem(icon: Icon(Icons.shopping_cart), label: "Sales"),
-          BottomNavigationBarItem(icon: Icon(Icons.inventory_2_outlined), label: "Inventory"),
-          BottomNavigationBarItem(icon: Icon(Icons.receipt_long), label: "Report"),
+          BottomNavigationBarItem(icon: Icon(Icons.inventory), label: "Inventory"),
+          BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: "Report"),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
         ],
       ),

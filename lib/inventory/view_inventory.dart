@@ -1,8 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:vasenizzpos/products/brand_inventory.dart';
 
-class InventoryPage extends StatelessWidget {
-  const InventoryPage({super.key});
+class ViewInventory extends StatefulWidget {
+  const ViewInventory({super.key});
+
+  @override
+  State<ViewInventory> createState() => _ViewInventoryState();
+}
+
+class _ViewInventoryState extends State<ViewInventory> {
+  int _currentPage = 1;
+  final int _totalPages = 3;
 
   @override
   Widget build(BuildContext context) {
@@ -16,37 +24,41 @@ class InventoryPage extends StatelessWidget {
     ];
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5E9ED),
-      bottomNavigationBar: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-        decoration: const BoxDecoration(
-          color: Color(0xFFFCE7EC),
-          borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(20),
-            topRight: Radius.circular(20),
-          ),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: const [
-            _BottomNavItem(icon: Icons.dashboard, label: 'Dashboard'),
-            _BottomNavItem(icon: Icons.shopping_cart, label: 'Sales'),
-            _BottomNavItem(icon: Icons.inventory, label: 'Inventory', active: true),
-            _BottomNavItem(icon: Icons.bar_chart, label: 'Report'),
-            _BottomNavItem(icon: Icons.person, label: 'Profile'),
-          ],
-        ),
-      ),
+      backgroundColor: const Color(0xFFF8F3F4),
       body: SafeArea(
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // HEADER
             Container(
-              color: const Color(0xFFFABFD2),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+              decoration: const BoxDecoration(
+                color: Color(0xFFFFD9E1),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black12,
+                    blurRadius: 6,
+                    offset: Offset(0, 2),
+                  ),
+                ],
+              ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Image.asset('assets/logo.png', height: 50),
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: const BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Center(
+                      child: Text(
+                        "LOGO",
+                        style: TextStyle(fontSize: 12),
+                      ),
+                    ),
+                  ),
                   const SizedBox(width: 10),
                   const Expanded(
                     child: Column(
@@ -54,19 +66,31 @@ class InventoryPage extends StatelessWidget {
                       children: [
                         Text(
                           "Carmen Branch",
-                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.black87,
+                          ),
                         ),
                         Text(
                           "Thofia Concepcion (03085)",
-                          style: TextStyle(fontSize: 14),
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.black54,
+                          ),
                         ),
                       ],
                     ),
                   ),
-                  const Icon(Icons.notifications_none, size: 28),
+                  IconButton(
+                    icon: const Icon(Icons.notifications_none, size: 28),
+                    onPressed: () {},
+                  ),
                 ],
               ),
             ),
+
+            // SEARCH BAR
             Padding(
               padding: const EdgeInsets.all(16.0),
               child: Row(
@@ -82,8 +106,9 @@ class InventoryPage extends StatelessWidget {
                         prefixIcon: const Icon(Icons.search),
                         filled: true,
                         fillColor: Colors.white,
+                        contentPadding: const EdgeInsets.symmetric(vertical: 0),
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
+                          borderRadius: BorderRadius.circular(12),
                           borderSide: BorderSide.none,
                         ),
                       ),
@@ -92,49 +117,64 @@ class InventoryPage extends StatelessWidget {
                 ],
               ),
             ),
+
             const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16.0),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  "All Brands",
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              padding: EdgeInsets.symmetric(horizontal: 20.0, vertical: 4),
+              child: Text(
+                "All Brands",
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                  color: Colors.black87,
                 ),
               ),
             ),
-            const SizedBox(height: 10),
+
+            const SizedBox(height: 8),
+
+            // BRAND LIST
             Expanded(
               child: ListView.builder(
+                padding: const EdgeInsets.only(bottom: 20),
                 itemCount: brands.length,
                 itemBuilder: (context, index) {
                   final brand = brands[index];
+                  final name = brand['name'] ?? 'Unknown';
+                  final logo = brand['logo'] ?? '';
+
                   return Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                     child: Container(
                       decoration: BoxDecoration(
                         color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(14),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.grey.shade300,
-                            blurRadius: 4,
-                            offset: const Offset(2, 3),
+                            color: Colors.black12,
+                            blurRadius: 6,
+                            offset: const Offset(0, 3),
                           ),
                         ],
                       ),
                       child: ListTile(
+                        contentPadding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                         title: Text(
-                          brand['name']!,
-                          style: const TextStyle(fontSize: 16),
-                        ),
-                        trailing: ClipRRect(
-                          borderRadius: BorderRadius.circular(30),
-                          child: Image.asset(
-                            brand['logo']!,
-                            width: 40,
-                            height: 40,
-                            fit: BoxFit.cover,
+                          name,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.black87,
                           ),
+                        ),
+                        trailing: Container(
+                          width: 42,
+                          height: 42,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF8C8D9),
+                            borderRadius: BorderRadius.circular(40),
+                          ),
+                          child: const Icon(Icons.business, color: Colors.white),
                         ),
                         onTap: () {
                           Navigator.push(
@@ -155,64 +195,59 @@ class InventoryPage extends StatelessWidget {
                 },
               ),
             ),
+
+            // PAGE NUMBERING
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black12,
+                    blurRadius: 4,
+                    offset: Offset(0, -2),
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back_ios, size: 18),
+                    onPressed: _currentPage > 1
+                        ? () {
+                      setState(() {
+                        _currentPage--;
+                      });
+                    }
+                        : null,
+                  ),
+                  const SizedBox(width: 16),
+                  Text(
+                    'Page $_currentPage of $_totalPages',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  IconButton(
+                    icon: const Icon(Icons.arrow_forward_ios, size: 18),
+                    onPressed: _currentPage < _totalPages
+                        ? () {
+                      setState(() {
+                        _currentPage++;
+                      });
+                    }
+                        : null,
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
       ),
-    );
-  }
-}
-
-// ------------------------------------------------------------
-// Bottom Navigation Item Widget
-// ------------------------------------------------------------
-class _BottomNavItem extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final bool active;
-  const _BottomNavItem({required this.icon, required this.label, this.active = false});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, color: active ? Colors.redAccent : Colors.black54),
-        Text(label, style: TextStyle(color: active ? Colors.redAccent : Colors.black54)),
-      ],
-    );
-  }
-}
-
-
-class _PaginationBar extends StatelessWidget {
-  const _PaginationBar();
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Wrap(
-          alignment: WrapAlignment.center,
-          children: List.generate(8, (i) {
-            return Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4),
-              child: Container(
-                width: 28,
-                height: 28,
-                decoration: BoxDecoration(
-                  color: i == 0 ? const Color(0xFFFABFD2) : Colors.transparent,
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(color: Colors.grey.shade400),
-                ),
-                alignment: Alignment.center,
-                child: Text("${i + 1}"),
-              ),
-            );
-          }),
-        ),
-        const SizedBox(height: 5),
-        const Text("1 of 8 pages (84 items)", style: TextStyle(fontSize: 12)),
-      ],
     );
   }
 }

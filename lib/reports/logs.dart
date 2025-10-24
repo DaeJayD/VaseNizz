@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 class ActivityLogsPage extends StatelessWidget {
   final List<Map<String, String>> logs;
 
-  ActivityLogsPage({Key? key, required this.logs}) : super(key: key);
+  const ActivityLogsPage({Key? key, required this.logs}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -11,40 +11,76 @@ class ActivityLogsPage extends StatelessWidget {
       backgroundColor: Colors.grey[200],
       body: Column(
         children: [
-          // Header
+          // Header with Back Button
           Container(
             width: double.infinity,
-            padding: EdgeInsets.only(top: 50, bottom: 20, left: 20, right: 20),
+            padding: const EdgeInsets.only(top: 50, bottom: 20, left: 20, right: 20),
             decoration: BoxDecoration(
               color: Colors.pink[200],
-              borderRadius: BorderRadius.only(
+              borderRadius: const BorderRadius.only(
                 bottomLeft: Radius.circular(20),
                 bottomRight: Radius.circular(20),
               ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 8,
+                  offset: const Offset(0, 3),
+                )
+              ],
             ),
             child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                CircleAvatar(
-                  radius: 25,
-                  backgroundImage: AssetImage('assets/logo.png'), // Replace with your logo
+                // Back button
+                IconButton(
+                  icon: const Icon(Icons.arrow_back, color: Colors.white, size: 28),
+                  onPressed: () {
+                    Navigator.pop(context);
+                  },
                 ),
-                SizedBox(width: 15),
+                const SizedBox(width: 10),
+
+                // Logo
+                Container(
+                  width: 50,
+                  height: 50,
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Center(
+                    child: Text(
+                      "LOGO",
+                      style: TextStyle(fontSize: 12),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 15),
+
+                // Title and Subtitle
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
+                    children: const [
                       Text(
                         "Activity Logs",
-                        style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
                       ),
+                      SizedBox(height: 3),
                       Text(
                         "Thofia Concepcion (03085)",
-                        style: TextStyle(fontSize: 16),
+                        style: TextStyle(fontSize: 16, color: Colors.white),
                       ),
                     ],
                   ),
                 ),
-                Icon(Icons.notifications_none, size: 28),
+
+                const Icon(Icons.notifications_none, color: Colors.white, size: 28),
               ],
             ),
           ),
@@ -54,9 +90,10 @@ class ActivityLogsPage extends StatelessWidget {
             padding: const EdgeInsets.all(15.0),
             child: Column(
               children: [
+                // Search bar
                 TextField(
                   decoration: InputDecoration(
-                    prefixIcon: Icon(Icons.search),
+                    prefixIcon: const Icon(Icons.search),
                     hintText: "Search by user, activity, product, branch, date",
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10),
@@ -65,13 +102,15 @@ class ActivityLogsPage extends StatelessWidget {
                     fillColor: Colors.white,
                   ),
                 ),
-                SizedBox(height: 10),
+                const SizedBox(height: 10),
+
+                // Dropdown filters
                 Row(
                   children: [
                     Expanded(
                       child: DropdownButtonFormField<String>(
-                        items: ["All activity", "Ex.Sold", "Ex.Updated"]
-                            .map((e) => DropdownMenuItem(child: Text(e), value: e))
+                        items: ["All activity", "Sold", "Updated"]
+                            .map((e) => DropdownMenuItem(value: e, child: Text(e)))
                             .toList(),
                         onChanged: (value) {},
                         decoration: InputDecoration(
@@ -81,14 +120,14 @@ class ActivityLogsPage extends StatelessWidget {
                           filled: true,
                           fillColor: Colors.white,
                         ),
-                        hint: Text("All activity"),
+                        hint: const Text("All activity"),
                       ),
                     ),
-                    SizedBox(width: 10),
+                    const SizedBox(width: 10),
                     Expanded(
                       child: DropdownButtonFormField<String>(
                         items: ["All Products", "Lipgloss", "Foundation"]
-                            .map((e) => DropdownMenuItem(child: Text(e), value: e))
+                            .map((e) => DropdownMenuItem(value: e, child: Text(e)))
                             .toList(),
                         onChanged: (value) {},
                         decoration: InputDecoration(
@@ -98,14 +137,14 @@ class ActivityLogsPage extends StatelessWidget {
                           filled: true,
                           fillColor: Colors.white,
                         ),
-                        hint: Text("All Products"),
+                        hint: const Text("All Products"),
                       ),
                     ),
-                    SizedBox(width: 10),
+                    const SizedBox(width: 10),
                     Expanded(
                       child: DropdownButtonFormField<String>(
                         items: ["All Time", "Today", "This Week", "This Month"]
-                            .map((e) => DropdownMenuItem(child: Text(e), value: e))
+                            .map((e) => DropdownMenuItem(value: e, child: Text(e)))
                             .toList(),
                         onChanged: (value) {},
                         decoration: InputDecoration(
@@ -115,7 +154,7 @@ class ActivityLogsPage extends StatelessWidget {
                           filled: true,
                           fillColor: Colors.white,
                         ),
-                        hint: Text("All Time"),
+                        hint: const Text("All Time"),
                       ),
                     ),
                   ],
@@ -126,48 +165,44 @@ class ActivityLogsPage extends StatelessWidget {
 
           // Logs Table
           Expanded(
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10),
               child: SingleChildScrollView(
-                child: DataTable(
-                  columns: const [
-                    DataColumn(label: Text('Timestamp')),
-                    DataColumn(label: Text('User')),
-                    DataColumn(label: Text('Activity')),
-                    DataColumn(label: Text('Branch')),
-                    DataColumn(label: Text('Product')),
-                  ],
-                  rows: logs
-                      .map(
-                        (log) => DataRow(cells: [
-                      DataCell(Text(log['timestamp'] ?? "")),
-                      DataCell(Text(log['user'] ?? "")),
-                      DataCell(Text(log['activity'] ?? "")),
-                      DataCell(Text(log['branch'] ?? "")),
-                      DataCell(Text(log['product'] ?? "")),
-                    ]),
-                  )
-                      .toList(),
+                scrollDirection: Axis.horizontal,
+                child: SingleChildScrollView(
+                  child: DataTable(
+                    headingRowColor: MaterialStateProperty.all(Colors.pink[100]),
+                    columns: const [
+                      DataColumn(label: Text('Time')),
+                      DataColumn(label: Text('User')),
+                      DataColumn(label: Text('Action')),
+                      DataColumn(label: Text('Description')),
+                    ],
+                    rows: logs.asMap().entries.map(
+                          (entry) {
+                        final index = entry.key;
+                        final log = entry.value;
+                        return DataRow(
+                          color: MaterialStateProperty.resolveWith<Color?>(
+                                (Set<MaterialState> states) {
+                              return index % 2 == 0 ? Colors.white : Colors.grey[100];
+                            },
+                          ),
+                          cells: [
+                            DataCell(Text(log['time'] ?? "")),
+                            DataCell(Text(log['user'] ?? "")),
+                            DataCell(Text(log['action'] ?? "")),
+                            DataCell(Text(log['description'] ?? "")),
+                          ],
+                        );
+                      },
+                    ).toList(),
+                  ),
                 ),
               ),
             ),
           ),
         ],
-      ),
-
-      // Bottom Navigation
-      bottomNavigationBar: BottomNavigationBar(
-        selectedItemColor: Colors.redAccent,
-        unselectedItemColor: Colors.grey,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.dashboard), label: "Dashboard"),
-          BottomNavigationBarItem(icon: Icon(Icons.shopping_cart), label: "Sales"),
-          BottomNavigationBarItem(icon: Icon(Icons.inventory_2), label: "Inventory"),
-          BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: "Report"),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
-        ],
-        currentIndex: 3,
-        onTap: (index) {},
       ),
     );
   }
