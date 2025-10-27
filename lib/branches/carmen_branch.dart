@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:vasenizzpos/inventory/inventory_screen.dart';
 import 'package:vasenizzpos/inventory/view_inventory.dart';
-import 'package:vasenizzpos/dashboard/homescreen.dart';
+//import 'package:vasenizzpos/dashboard/homescreen.dart';
 
 import 'package:vasenizzpos/sales/sales_screen.dart';
 import 'package:vasenizzpos/reports/reports_page.dart';

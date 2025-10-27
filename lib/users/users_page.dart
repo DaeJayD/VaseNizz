@@ -1,13 +1,20 @@
 import 'package:flutter/material.dart';
-import 'package:vasenizzpos/inventory/inventory_screen.dart';
-import 'package:vasenizzpos/main.dart';
 import 'package:vasenizzpos/dashboard/homescreen.dart';
-import 'package:vasenizzpos/sales/sales_screen.dart';
-import 'package:vasenizzpos/reports/reports_page.dart';
+import 'package:vasenizzpos/main.dart';
 import 'emp_profile.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class UsersPage extends StatefulWidget {
-  const UsersPage({super.key});
+  final String fullName;
+  final String? role;
+  final int initialIndex;
+
+  const UsersPage({
+    Key? key,
+    required this.fullName,
+    this.role,
+    this.initialIndex = 4,
+  }) : super(key: key);
 
   @override
   State<UsersPage> createState() => _UsersPageState();
@@ -15,6 +22,124 @@ class UsersPage extends StatefulWidget {
 
 class _UsersPageState extends State<UsersPage> {
   int _selectedIndex = 4;
+  List<Map<String, dynamic>> employees = [];
+
+  TextEditingController nameController = TextEditingController();
+  TextEditingController phoneController = TextEditingController();
+  TextEditingController dobController = TextEditingController();
+  TextEditingController usernameController = TextEditingController();
+  String? selectedBranch;
+  String? selectedRole;
+
+  bool showEmployeeList = false; // Employee list visibility
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchEmployees();
+  }
+
+  // Auto-generate User ID like E001, E002...
+  Future<String> _generateUserId() async {
+    try {
+      final response = await Supabase.instance.client
+          .from('employees')
+          .select('user_id')
+          .order('user_id', ascending: false)
+          .limit(1)
+          .select();
+
+      if (response != null && response.isNotEmpty) {
+        String lastId = response[0]['user_id']; // e.g., "E003"
+        int number = int.parse(lastId.substring(1));
+        number += 1;
+        return 'E${number.toString().padLeft(3, '0')}';
+      } else {
+        return 'E001';
+      }
+    } catch (e) {
+      print('Error generating user_id: $e');
+      return 'E001';
+    }
+  }
+
+  Future<void> _createUser() async {
+    final userId = await _generateUserId();
+    final name = nameController.text.trim();
+    final phone = phoneController.text.trim();
+    final dob = dobController.text.trim();
+    final username = usernameController.text.trim();
+
+    if (name.isEmpty ||
+        phone.isEmpty ||
+        dob.isEmpty ||
+        username.isEmpty ||
+        selectedBranch == null ||
+        selectedRole == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please fill all fields.')),
+      );
+      return;
+    }
+
+    try {
+      final response = await Supabase.instance.client
+          .from('employees')
+          .insert({
+        'name': name,
+        'phone': phone,
+        'dob': dob,
+        'username': username,
+        'user_id': userId,
+        'branch': selectedBranch,
+        'role': selectedRole,
+        'password': '0', // default password
+      })
+          .select();
+
+      if (response != null && response.isNotEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('User $userId created successfully!')),
+        );
+        _fetchEmployees();
+        nameController.clear();
+        phoneController.clear();
+        dobController.clear();
+        usernameController.clear();
+        setState(() {
+          selectedBranch = null;
+          selectedRole = null;
+        });
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Error creating user.')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
+    }
+  }
+
+  Future<void> _fetchEmployees() async {
+    try {
+      final response = await Supabase.instance.client
+          .from('employees')
+          .select();
+
+      setState(() {
+        employees = response != null
+            ? List<Map<String, dynamic>>.from(response)
+            : [];
+      });
+    } catch (e) {
+      print('Error fetching employees: $e');
+      setState(() {
+        employees = [];
+      });
+    }
+  }
 
   void _onItemTapped(int index) {
     if (index == _selectedIndex) return;
@@ -22,19 +147,23 @@ class _UsersPageState extends State<UsersPage> {
     Widget nextPage;
     switch (index) {
       case 0:
-        nextPage = HomeScreen(username: '');
+        nextPage = HomeScreen(
+          fullName: widget.fullName,
+          role: widget.role,
+        );
         break;
       case 1:
-        nextPage = SalesScreen();
+        nextPage = Scaffold(body: Center(child: Text("Sales Screen")));
         break;
       case 2:
-        nextPage = InventoryPage();
+        nextPage = Scaffold(body: Center(child: Text("Inventory Page")));
         break;
       case 3:
-        nextPage = ViewReportsPage();
+        nextPage = Scaffold(body: Center(child: Text("Reports Page")));
         break;
       case 4:
-        nextPage = UsersPage();
+        nextPage =
+            UsersPage(fullName: widget.fullName, role: widget.role);
         break;
       default:
         return;
@@ -65,20 +194,19 @@ class _UsersPageState extends State<UsersPage> {
               backgroundImage: AssetImage('assets/logo.png'),
             ),
             const SizedBox(width: 10),
-            const Column(
+            Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  "Manage User",
+                const Text(
+                  "Manage Users",
                   style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18,
-                    color: Colors.black87,
-                  ),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                      color: Colors.black87),
                 ),
                 Text(
-                  "Thofia Concepcion (03085)",
-                  style: TextStyle(fontSize: 13, color: Colors.black54),
+                  widget.fullName,
+                  style: const TextStyle(fontSize: 13, color: Colors.black54),
                 ),
               ],
             ),
@@ -87,8 +215,8 @@ class _UsersPageState extends State<UsersPage> {
         actions: const [
           Padding(
             padding: EdgeInsets.only(right: 15),
-            child:
-            Icon(Icons.notifications_none, color: Colors.black54, size: 26),
+            child: Icon(Icons.notifications_none,
+                color: Colors.black54, size: 26),
           ),
         ],
       ),
@@ -97,55 +225,121 @@ class _UsersPageState extends State<UsersPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.grey.shade300),
-              ),
-              child: Row(
-                children: [
-                  const Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text("Thofia Concepcion",
-                            style: TextStyle(
-                                fontWeight: FontWeight.bold, fontSize: 16)),
-                        SizedBox(height: 2),
-                        Text("(03085)  Owner",
-                            style: TextStyle(color: Colors.black54)),
-                        SizedBox(height: 2),
-                        Text("090322123",
-                            style: TextStyle(color: Colors.black54)),
-                      ],
-                    ),
-                  ),
-                  TextButton.icon(
-                    onPressed: () {},
-                    icon: const Icon(Icons.edit,
-                        color: Colors.redAccent, size: 18),
-                    label: const Text(
-                      "Edit Profile",
-                      style: TextStyle(color: Colors.redAccent),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
             Center(
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.black,
-                  padding:
-                  const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
+                  padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),
                 ),
-                onPressed: () {},
+                onPressed: () {
+                  // Show the employee list in a modal
+                  showModalBottomSheet(
+                    context: context,
+                    isScrollControlled: true,
+                    backgroundColor: Colors.transparent,
+                    builder: (context) => DraggableScrollableSheet(
+                      initialChildSize: 0.5, // half screen
+                      minChildSize: 0.3,
+                      maxChildSize: 0.9,
+                      expand: false,
+                      builder: (context, scrollController) {
+                        return Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: const BorderRadius.only(
+                              topLeft: Radius.circular(20),
+                              topRight: Radius.circular(20),
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black26,
+                                blurRadius: 10,
+                              ),
+                            ],
+                          ),
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            children: [
+                              const Text(
+                                "Employee List",
+                                style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 18,
+                                    color: Colors.black87),
+                              ),
+                              const SizedBox(height: 10),
+                              Expanded(
+                                child: employees.isEmpty
+                                    ? const Center(child: Text("No employees found"))
+                                    : ListView.builder(
+                                  controller: scrollController,
+                                  itemCount: employees.length,
+                                  itemBuilder: (context, index) {
+                                    final employee = employees[index];
+                                    return Container(
+                                      margin: const EdgeInsets.only(bottom: 12),
+                                      padding: const EdgeInsets.all(12),
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey[50],
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(color: Colors.grey.shade300),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                              children: [
+                                                Text(employee['name'] ?? '',
+                                                    style: const TextStyle(
+                                                        fontWeight: FontWeight.bold,
+                                                        fontSize: 16)),
+                                                const SizedBox(height: 2),
+                                                Text(
+                                                    "${employee['user_id'] ?? ''}  ${employee['role'] ?? ''}",
+                                                    style: const TextStyle(
+                                                        color: Colors.black54)),
+                                                const SizedBox(height: 2),
+                                                Text(employee['phone'] ?? '',
+                                                    style: const TextStyle(
+                                                        color: Colors.black54)),
+                                              ],
+                                            ),
+                                          ),
+                                          TextButton.icon(
+                                            onPressed: () {
+                                              Navigator.push(
+                                                context,
+                                                MaterialPageRoute(
+                                                  builder: (context) => EmployeeProfilePage(
+                                                    userId: employee['user_id'],
+                                                  ),
+                                                ),
+                                              );
+                                            },
+                                            icon: const Icon(Icons.edit, color: Colors.redAccent, size: 18),
+                                            label: const Text(
+                                              "Edit",
+                                              style: TextStyle(color: Colors.redAccent),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  );
+                },
                 child: const Text(
                   "MANAGE USERS",
                   style: TextStyle(
@@ -156,14 +350,102 @@ class _UsersPageState extends State<UsersPage> {
                 ),
               ),
             ),
+
+            const SizedBox(height: 20),
+            if (showEmployeeList)
+              Column(
+                children: employees.map((employee) {
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.grey.shade300),
+                    ),
+                    child: Row(
+                      children: [
+                        // Edit button
+                        TextButton.icon(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => EmployeeProfilePage(
+                                  userId: employee['user_id'], // employee from ListView.builder
+                                ),
+                              ),
+                            );
+                          },
+                          icon: const Icon(Icons.edit, color: Colors.redAccent, size: 18),
+                          label: const Text(
+                            "Edit",
+                            style: TextStyle(color: Colors.redAccent),
+                          ),
+                        ),
+
+                        const SizedBox(width: 8),
+
+                        // Delete button
+                        TextButton.icon(
+                          onPressed: () async {
+                            bool confirmed = await showDialog(
+                              context: context,
+                              builder: (context) => AlertDialog(
+                                title: const Text("Confirm Delete"),
+                                content: Text(
+                                    "Are you sure you want to delete ${employee['name']}?"),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(context, false),
+                                    child: const Text("Cancel"),
+                                  ),
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(context, true),
+                                    child: const Text(
+                                        "Delete",
+                                        style: TextStyle(color: Colors.red)
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+
+                            if (confirmed) {
+                              try {
+                                await Supabase.instance.client
+                                    .from('employees')
+                                    .delete()
+                                    .eq('user_id', employee['user_id']);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text("${employee['name']} deleted.")),
+                                );
+                                _fetchEmployees();
+                              } catch (e) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text("Error deleting user: $e")),
+                                );
+                              }
+                            }
+                          },
+                          icon: const Icon(Icons.delete, color: Colors.red, size: 18),
+                          label: const Text(
+                            "Delete",
+                            style: TextStyle(color: Colors.red),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }).toList(),
+              ),
             const SizedBox(height: 24),
             const Text(
-              "Create New",
+              "Create New User",
               style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
-                color: Colors.black87,
-              ),
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                  color: Colors.black87),
             ),
             const SizedBox(height: 12),
             Container(
@@ -175,10 +457,14 @@ class _UsersPageState extends State<UsersPage> {
               ),
               child: Column(
                 children: [
-                  buildTextField("Name", "Employee 1"),
-                  buildTextField("Phone Number", "Ex. 09123456789"),
-                  buildTextField("Date of Birth", "yyyy/mm/dd"),
-                  buildTextField("User ID", "0.xxxx"),
+                  buildTextField("Name", "Employee Name",
+                      controller: nameController),
+                  buildTextField("Phone Number", "Ex. 09123456789",
+                      controller: phoneController),
+                  buildTextField("Date of Birth", "yyyy/mm/dd",
+                      controller: dobController),
+                  buildTextField("Username", "Username",
+                      controller: usernameController),
                   const SizedBox(height: 8),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -189,17 +475,20 @@ class _UsersPageState extends State<UsersPage> {
                             contentPadding: const EdgeInsets.symmetric(
                                 horizontal: 8, vertical: 6),
                             border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(6),
-                            ),
+                                borderRadius: BorderRadius.circular(6)),
                           ),
                           hint: const Text("Assign Branch"),
-                          items: ["Branch 1", "Branch 2"].map((val) {
-                            return DropdownMenuItem(
-                              value: val,
-                              child: Text(val),
-                            );
-                          }).toList(),
-                          onChanged: (val) {},
+                          items: ["Branch 1", "Branch 2"]
+                              .map((val) => DropdownMenuItem(
+                            value: val,
+                            child: Text(val),
+                          ))
+                              .toList(),
+                          onChanged: (val) {
+                            setState(() {
+                              selectedBranch = val;
+                            });
+                          },
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -209,17 +498,20 @@ class _UsersPageState extends State<UsersPage> {
                             contentPadding: const EdgeInsets.symmetric(
                                 horizontal: 8, vertical: 6),
                             border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(6),
-                            ),
+                                borderRadius: BorderRadius.circular(6)),
                           ),
                           hint: const Text("Assign Role"),
-                          items: ["Cashier", "Staff", "Manager"].map((val) {
-                            return DropdownMenuItem(
-                              value: val,
-                              child: Text(val),
-                            );
-                          }).toList(),
-                          onChanged: (val) {},
+                          items: ["Cashier", "Staff", "Manager"]
+                              .map((val) => DropdownMenuItem(
+                            value: val,
+                            child: Text(val),
+                          ))
+                              .toList(),
+                          onChanged: (val) {
+                            setState(() {
+                              selectedRole = val;
+                            });
+                          },
                         ),
                       ),
                     ],
@@ -231,17 +523,14 @@ class _UsersPageState extends State<UsersPage> {
                       padding: const EdgeInsets.symmetric(
                           vertical: 10, horizontal: 16),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
+                          borderRadius: BorderRadius.circular(8)),
                     ),
-                    onPressed: () {},
+                    onPressed: _createUser,
                     icon: const Icon(Icons.add, color: Colors.green),
                     label: const Text(
                       "Create User",
                       style: TextStyle(
-                        color: Colors.green,
-                        fontWeight: FontWeight.bold,
-                      ),
+                          color: Colors.green, fontWeight: FontWeight.bold),
                     ),
                   ),
                 ],
@@ -249,48 +538,17 @@ class _UsersPageState extends State<UsersPage> {
             ),
             const SizedBox(height: 20),
             Center(
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.pinkAccent,
-                  padding:
-                  const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (context) => const EmployeeProfilePage()),
-                  );
-                },
-                child: const Text(
-                  "VIEW EMPLOYEE PROFILE",
-                  style: TextStyle(
-                    letterSpacing: 1,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
-            Center(
               child: TextButton(
                 onPressed: () {
                   Navigator.pushAndRemoveUntil(
-                    context,
-                    MaterialPageRoute(builder: (context) => VasenizzApp()),
-                        (route) => false,
-                  );
+                      context,
+                      MaterialPageRoute(builder: (context) => VasenizzApp()),
+                          (route) => false);
                 },
                 child: const Text(
                   "Log Out",
                   style: TextStyle(
-                    color: Colors.redAccent,
-                    fontWeight: FontWeight.bold,
-                  ),
+                      color: Colors.redAccent, fontWeight: FontWeight.bold),
                 ),
               ),
             ),
@@ -317,10 +575,12 @@ class _UsersPageState extends State<UsersPage> {
     );
   }
 
-  static Widget buildTextField(String label, String hint) {
+  static Widget buildTextField(String label, String hint,
+      {TextEditingController? controller}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: TextField(
+        controller: controller,
         decoration: InputDecoration(
           labelText: label,
           hintText: hint,

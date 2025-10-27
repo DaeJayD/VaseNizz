@@ -1,15 +1,17 @@
 import 'package:flutter/material.dart';
-import 'package:vasenizzpos/inventory/inventory_screen.dart';
-import 'package:vasenizzpos/sales/sales_screen.dart';
-import 'package:vasenizzpos/reports/view_reports.dart';
 import 'package:vasenizzpos/users/users_page.dart';
+// import 'package:vasenizzpos/inventory/inventory_screen.dart';
+// import 'package:vasenizzpos/sales/sales_screen.dart';
+// import 'package:vasenizzpos/reports/reports_page.dart';
 
 class HomeScreen extends StatefulWidget {
-  final String username;
+  final String fullName;
+  final String? role;
   final int initialIndex;
 
   const HomeScreen({
-    required this.username,
+    required this.fullName,
+    this.role,
     this.initialIndex = 0,
     Key? key,
   }) : super(key: key);
@@ -24,7 +26,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _selectedIndex = widget.initialIndex; // ✅ start with chosen tab
+    _selectedIndex = widget.initialIndex;
   }
 
   final salesData = {
@@ -71,9 +73,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   style: TextStyle(
                       fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87),
                 ),
-                Text(
-                  "Welcome Back!\n${widget.username} (03085)",
-                  style: const TextStyle(fontSize: 12, color: Colors.black54),
+                  Text(
+                    "Welcome Back!\n${widget.fullName} (${widget.role ?? 'No Role'})",
+                    style: const TextStyle(fontSize: 12, color: Colors.black54),
                 ),
               ],
             ),
@@ -87,7 +89,6 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
 
-      // BODY
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         child: Column(
@@ -108,20 +109,12 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 const SizedBox(width: 10),
                 Expanded(
-                  child: GestureDetector(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => const SalesScreen()),
-                      );
-                    },
-                    child: dashboardCard(
-                      icon: Icons.attach_money_rounded,
-                      title: salesData['salesAmount'].toString(),
-                      subtitle: "Sales",
-                      extra: salesData['salesChange'].toString(),
-                      color: Colors.orange.shade50,
-                    ),
+                  child: dashboardCard(
+                    icon: Icons.attach_money_rounded,
+                    title: salesData['salesAmount'].toString(),
+                    subtitle: "Sales",
+                    extra: salesData['salesChange'].toString(),
+                    color: Colors.orange.shade50,
                   ),
                 ),
               ],
@@ -155,7 +148,6 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
 
-      // ✅ BOTTOM NAVIGATION BAR
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
         selectedItemColor: Colors.pink,
@@ -164,52 +156,39 @@ class _HomeScreenState extends State<HomeScreen> {
         onTap: (index) {
           setState(() => _selectedIndex = index);
 
+          // Commenting out other pages except Users
+          /*
           if (index == 0) {
-            // Dashboard
           } else if (index == 1) {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const SalesScreen()),
-            ).then((_) => setState(() => _selectedIndex = 0));
+            // Sales page
           } else if (index == 2) {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const InventoryPage()),
-            ).then((_) => setState(() => _selectedIndex = 0));
+            // Inventory page
           } else if (index == 3) {
+            // Reports page
+          } else
+          */
+          if (index == 4) {
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => const ViewReportsPage()),
-            ).then((_) => setState(() => _selectedIndex = 0));
-          } else if (index == 4) {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const UsersPage()),
+              MaterialPageRoute(builder: (context) => UsersPage(
+                fullName: widget.fullName,
+                role: widget.role,
+              )),
             ).then((_) => setState(() => _selectedIndex = 0));
           }
         },
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.dashboard_rounded), label: "Dashboard"),
-          BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: "Sales"),
-          BottomNavigationBarItem(icon: Icon(Icons.inventory_2_outlined), label: "Inventory"),
-          BottomNavigationBarItem(icon: Icon(Icons.receipt_long), label: "Report"),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: "Manage"),
+          BottomNavigationBarItem(icon: Icon(Icons.shopping_cart), label: "Sales"),
+          BottomNavigationBarItem(icon: Icon(Icons.inventory), label: "Inventory"),
+          BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: "Report"),
+          BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
         ],
       ),
     );
   }
 
-  // ---- UI HELPERS ----
-  void _showPlaceholderMessage(String screenName) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('$screenName - Coming Soon!'),
-        duration: const Duration(seconds: 2),
-        backgroundColor: Colors.pink,
-      ),
-    );
-  }
-
+  // Helper widgets
   Widget sectionTitle(String title) {
     return Container(
       decoration: BoxDecoration(
