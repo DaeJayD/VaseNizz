@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:vasenizzpos/inventory/inventory_screen.dart';
 import 'package:vasenizzpos/sales/sales_screen.dart';
 import 'package:vasenizzpos/reports/reports_page.dart';
@@ -22,13 +23,13 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   late int _selectedIndex;
-
-  // Sample dashboard data
-  final salesData = {
-    'itemsSold': 23,
-    'salesAmount': '₱48,999',
-    'salesChange': '-13%',
+  Map<String, dynamic> _salesData = {
+    'itemsSoldToday': 0,
+    'totalSalesToday': 0.0,
+    'totalSalesYesterday': 0.0,
   };
+  List<Map<String, dynamic>> _topSelling = [];
+  bool _isLoading = true;
 
   final shipmentData = [
     {'count': 12, 'label': 'Packages to be Shipped', 'icon': Icons.local_shipping},
@@ -38,16 +39,133 @@ class _HomeScreenState extends State<HomeScreen> {
 
   final inventoryData = {'inStock': 5000, 'reStock': 150};
 
-  final topSelling = [
-    {'name': 'Concealer', 'sold': 24, 'price': '₱199'},
-    {'name': 'SPF 50+++', 'sold': 70, 'price': '₱349'},
-    {'name': 'Rejuvenating Set', 'sold': 12, 'price': '₱499'},
-  ];
-
   @override
   void initState() {
     super.initState();
     _selectedIndex = widget.initialIndex;
+    _loadDashboardData();
+  }
+
+  Future<void> _loadDashboardData() async {
+    try {
+      final today = DateTime.now();
+      final todayStart = DateTime(today.year, today.month, today.day);
+      final yesterdayStart = todayStart.subtract(const Duration(days: 1));
+      final yesterdayEnd = todayStart.subtract(const Duration(seconds: 1));
+
+      // Get today's sales
+      final todaySalesResponse = await Supabase.instance.client
+          .from('sales')
+          .select('*')
+          .gte('created_at', todayStart.toIso8601String());
+
+      final todaySales = List<Map<String, dynamic>>.from(todaySalesResponse);
+
+      // Get yesterday's sales for comparison
+      final yesterdaySalesResponse = await Supabase.instance.client
+          .from('sales')
+          .select('*')
+          .gte('created_at', yesterdayStart.toIso8601String())
+          .lte('created_at', yesterdayEnd.toIso8601String());
+
+      final yesterdaySales = List<Map<String, dynamic>>.from(yesterdaySalesResponse);
+
+      // Get today's sale items to count items sold
+      int itemsSoldToday = 0;
+      double totalSalesToday = 0.0;
+      double totalSalesYesterday = 0.0;
+
+      // Calculate today's data
+      for (final sale in todaySales) {
+        totalSalesToday += (sale['total_amount'] ?? 0);
+
+        // Get sale items for this sale to count quantities
+        final saleItemsResponse = await Supabase.instance.client
+            .from('sale_items')
+            .select('quantity')
+            .eq('sale_id', sale['id']);
+
+        final saleItems = List<Map<String, dynamic>>.from(saleItemsResponse);
+        for (final item in saleItems) {
+          itemsSoldToday += (item['quantity'] as int? ?? 0);
+        }
+      }
+
+      // Calculate yesterday's total
+      for (final sale in yesterdaySales) {
+        totalSalesYesterday += (sale['total_amount'] ?? 0);
+      }
+
+      // Get top selling products (last 7 days)
+      final weekAgo = today.subtract(const Duration(days: 7));
+      final topSellingResponse = await Supabase.instance.client
+          .from('sale_items')
+          .select('''
+            product_id,
+            quantity,
+            products(name, price)
+          ''')
+          .gte('created_at', weekAgo.toIso8601String());
+
+      final topSellingItems = List<Map<String, dynamic>>.from(topSellingResponse);
+
+      // Aggregate product sales
+      final productSales = <String, Map<String, dynamic>>{};
+      for (final item in topSellingItems) {
+        final productId = item['product_id'].toString();
+        final product = item['products'] ?? {};
+        final productName = product['name'] ?? 'Unknown Product';
+        final productPrice = product['price'] ?? 0.0;
+        final quantity = item['quantity'] ?? 0;
+
+        if (productSales.containsKey(productId)) {
+          productSales[productId]!['quantity'] += quantity;
+        } else {
+          productSales[productId] = {
+            'name': productName,
+            'quantity': quantity,
+            'price': productPrice,
+          };
+        }
+      }
+
+      // Convert to list and sort by quantity
+      final topSellingList = productSales.values.toList();
+      topSellingList.sort((a, b) => (b['quantity'] ?? 0).compareTo(a['quantity'] ?? 0));
+
+      setState(() {
+        _salesData = {
+          'itemsSoldToday': itemsSoldToday,
+          'totalSalesToday': totalSalesToday,
+          'totalSalesYesterday': totalSalesYesterday,
+        };
+        _topSelling = topSellingList.take(3).toList(); // Top 3 products
+        _isLoading = false;
+      });
+    } catch (e) {
+      print('Error loading dashboard data: $e');
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  String get _salesChange {
+    final today = _salesData['totalSalesToday'] ?? 0.0;
+    final yesterday = _salesData['totalSalesYesterday'] ?? 0.0;
+
+    if (yesterday == 0) {
+      return today > 0 ? '+100%' : '0%';
+    }
+
+    final change = ((today - yesterday) / yesterday) * 100;
+    return '${change >= 0 ? '+' : ''}${change.toStringAsFixed(0)}%';
+  }
+
+  Color get _salesChangeColor {
+    final today = _salesData['totalSalesToday'] ?? 0.0;
+    final yesterday = _salesData['totalSalesYesterday'] ?? 0.0;
+    return today >= yesterday ? Colors.green : Colors.red;
   }
 
   void _onItemTapped(int index) {
@@ -128,7 +246,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87),
                 ),
                 Text(
-                  "Welcome Back!\n${widget.fullName}",
+                  "Welcome Back!\n${widget.fullName} (${widget.role})",
                   style: const TextStyle(fontSize: 12, color: Colors.black54),
                 ),
               ],
@@ -136,6 +254,10 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh, color: Colors.black54),
+            onPressed: _loadDashboardData,
+          ),
           IconButton(
             icon: const Icon(Icons.notifications_none_rounded, color: Colors.black54),
             onPressed: () {},
@@ -153,10 +275,10 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 Expanded(
                   child: dashboardCard(
-                    icon: Icons.trending_up,
-                    title: "${salesData['itemsSold']}",
+                    icon: Icons.shopping_cart,
+                    title: _isLoading ? "..." : "${_salesData['itemsSoldToday']}",
                     subtitle: "Items Sold Today",
-                    extra: "+N/A%",
+                    extra: "Today",
                     color: Colors.pink.shade50,
                   ),
                 ),
@@ -166,10 +288,11 @@ class _HomeScreenState extends State<HomeScreen> {
                     onTap: () => _onItemTapped(1),
                     child: dashboardCard(
                       icon: Icons.attach_money_rounded,
-                      title: salesData['salesAmount'].toString(),
-                      subtitle: "Sales",
-                      extra: salesData['salesChange'].toString(),
+                      title: _isLoading ? "..." : "₱${_salesData['totalSalesToday'].toStringAsFixed(2)}",
+                      subtitle: "Sales Today",
+                      extra: _salesChange,
                       color: Colors.orange.shade50,
+                      extraColor: _salesChangeColor,
                     ),
                   ),
                 ),
@@ -197,7 +320,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
             const SizedBox(height: 25),
-            sectionTitle("Top Selling"),
+            sectionTitle("Top Selling (Last 7 Days)"),
             const SizedBox(height: 10),
             buildTopSellingTable(),
           ],
@@ -241,6 +364,7 @@ class _HomeScreenState extends State<HomeScreen> {
     required String subtitle,
     required String extra,
     required Color color,
+    Color? extraColor,
   }) {
     return Container(
       padding: const EdgeInsets.all(14),
@@ -254,13 +378,16 @@ class _HomeScreenState extends State<HomeScreen> {
         children: [
           Icon(icon, color: Colors.pinkAccent),
           const SizedBox(height: 8),
-          Text(title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+          Text(
+            title,
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
           const SizedBox(height: 4),
           Text(subtitle, style: const TextStyle(color: Colors.black54)),
           Text(
             extra,
             style: TextStyle(
-              color: extra.contains('-') ? Colors.red : Colors.green,
+              color: extraColor ?? (extra.contains('-') ? Colors.red : Colors.green),
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -328,23 +455,49 @@ class _HomeScreenState extends State<HomeScreen> {
         children: [
           Row(
             children: const [
-              Expanded(child: Text("Name", style: TextStyle(fontWeight: FontWeight.bold))),
+              Expanded(flex: 2, child: Text("Name", style: TextStyle(fontWeight: FontWeight.bold))),
               Expanded(child: Text("Sold", style: TextStyle(fontWeight: FontWeight.bold))),
               Expanded(child: Text("Price", style: TextStyle(fontWeight: FontWeight.bold))),
             ],
           ),
           const Divider(),
-          for (var item in topSelling)
-            Padding(
+          if (_isLoading)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 20),
+              child: Center(child: CircularProgressIndicator()),
+            )
+          else if (_topSelling.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 20),
+              child: Text('No sales data available', style: TextStyle(color: Colors.grey)),
+            )
+          else
+            ..._topSelling.map((item) => Padding(
               padding: const EdgeInsets.symmetric(vertical: 8.0),
               child: Row(
                 children: [
-                  Expanded(child: Text(item['name'].toString())),
-                  Expanded(child: Text(item['sold'].toString())),
-                  Expanded(child: Text(item['price'].toString())),
+                  Expanded(
+                    flex: 2,
+                    child: Text(
+                      item['name']?.toString() ?? 'Unknown Product',
+                      style: const TextStyle(fontWeight: FontWeight.w500),
+                    ),
+                  ),
+                  Expanded(
+                    child: Text(
+                      '${item['quantity'] ?? 0}',
+                      style: const TextStyle(fontWeight: FontWeight.w500),
+                    ),
+                  ),
+                  Expanded(
+                    child: Text(
+                      '₱${(item['price'] ?? 0).toStringAsFixed(2)}',
+                      style: const TextStyle(fontWeight: FontWeight.w500),
+                    ),
+                  ),
                 ],
               ),
-            ),
+            )).toList(),
         ],
       ),
     );

@@ -4,9 +4,15 @@ import 'package:table_calendar/table_calendar.dart';
 import 'package:vasenizzpos/main.dart';
 
 class UserProfileScreen extends StatefulWidget {
+  final String fullName;
+  final String role;
   final String userId;
 
-  const UserProfileScreen({required this.userId, Key? key}) : super(key: key);
+  const UserProfileScreen({
+    required this.fullName,
+    required this.role,
+    required this.userId,
+    Key? key}) : super(key: key);
 
   @override
   State<UserProfileScreen> createState() => _UserProfileScreenState();

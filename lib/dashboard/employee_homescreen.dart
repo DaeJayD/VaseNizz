@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:vasenizzpos/users/employee_page.dart';
+import 'package:vasenizzpos/sales/sales_screen.dart';
+import 'package:vasenizzpos/users/employee_page.dart'; // Renamed for clarity
+import 'package:vasenizzpos/inventory/inventory_screen.dart';
 
 class EmployeeHomeScreen extends StatefulWidget {
   final String fullName;
   final String userId;
   final String role;
-
 
   const EmployeeHomeScreen({
     required this.fullName,
@@ -27,10 +28,9 @@ class _EmployeeHomeScreenState extends State<EmployeeHomeScreen> {
   void initState() {
     super.initState();
     _pages = [
-      SalesPage(),
-      UserProfileScreen(
-        userId: widget.userId,
-      ),
+      SalesScreen(fullName: widget.fullName, role: widget.role),
+      InventoryPage(fullName: widget.fullName, role: widget.role),
+      UserProfileScreen(userId: widget.userId, fullName: widget.fullName, role: widget.role),
     ];
   }
 
@@ -50,8 +50,8 @@ class _EmployeeHomeScreenState extends State<EmployeeHomeScreen> {
         elevation: 0,
         title: Row(
           children: [
-            CircleAvatar(
-              backgroundImage: const AssetImage('assets/logo.png'),
+            const CircleAvatar(
+              backgroundImage: AssetImage('assets/logo.png'),
               radius: 22,
               backgroundColor: Colors.white,
             ),
@@ -60,7 +60,7 @@ class _EmployeeHomeScreenState extends State<EmployeeHomeScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  "Sales",
+                  "Employee Dashboard",
                   style: TextStyle(
                       fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87),
                 ),
@@ -95,12 +95,3 @@ class _EmployeeHomeScreenState extends State<EmployeeHomeScreen> {
     );
   }
 }
-
-// Placeholder pages for Sales and Inventory
-class SalesPage extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Center(child: Text("Sales Page Content"));
-  }
-}
-

@@ -96,7 +96,7 @@ class _UsersPageState extends State<UsersPage> {
         'user_id': userId,
         'branch': selectedBranch,
         'role': selectedRole,
-        'password': '',
+        'password': '1',
       })
           .select();
 
@@ -223,7 +223,7 @@ class _UsersPageState extends State<UsersPage> {
                       color: Colors.black87),
                 ),
                 Text(
-                  widget.fullName,
+                  "${widget.fullName} (${widget.role})",
                   style: const TextStyle(fontSize: 13, color: Colors.black54),
                 ),
               ],

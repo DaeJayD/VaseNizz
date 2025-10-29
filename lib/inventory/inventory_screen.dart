@@ -3,6 +3,7 @@ import 'package:vasenizzpos/dashboard/home_screen.dart';
 import 'package:vasenizzpos/sales/sales_screen.dart';
 import 'package:vasenizzpos/reports/reports_page.dart';
 import 'package:vasenizzpos/users/users_page.dart';
+import 'package:vasenizzpos/services/inventory_service.dart';
 import 'inventory_history.dart';
 
 class InventoryPage extends StatefulWidget {
@@ -23,24 +24,53 @@ class InventoryPage extends StatefulWidget {
 
 class _InventoryPageState extends State<InventoryPage> {
   late int _selectedIndex;
-
-  final List<Map<String, String>> stockData = List.generate(
-    12,
-        (index) => {
-      'sid': 'EX-${index + 1}',
-      'productId': 'PID${1000 + index}',
-      'brand': 'Beauty Wise',
-      'name': 'Product ${index + 1}',
-      'in': '${20 + index}',
-      'out': '${10 + index}',
-      'qty': '${(20 + index) - (10 + index)}',
-    },
-  );
+  final InventoryService _inventoryService = InventoryService();
+  List<dynamic> _stockData = [];
+  bool _isLoading = true;
+  String _searchQuery = '';
 
   @override
   void initState() {
     super.initState();
     _selectedIndex = widget.initialIndex;
+    _loadStockData();
+  }
+
+  Future<void> _loadStockData() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    // Load low stock items across all branches
+    final result = await _inventoryService.getStockSummary();
+
+    if (result['error'] == null) {
+      setState(() {
+        _stockData = result['data'] ?? [];
+      });
+    } else {
+      // Fallback to mock data if API fails
+      setState(() {
+        _stockData = List.generate(12, (index) => {
+          'sid': 'EX-${index + 1}',
+          'productId': 'PID${1000 + index}',
+          'brand': 'Beauty Wise',
+          'name': 'Product ${index + 1}',
+          'current_stock': 20 + index,
+          'low_stock_threshold': 10,
+          'products': {'name': 'Product ${index + 1}', 'sku': 'SKU${1000 + index}'},
+          'branches': {'name': 'JASAAN BRANCH'},
+        });
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Using demo data: ${result['error']}')),
+      );
+    }
+
+    setState(() {
+      _isLoading = false;
+    });
   }
 
   void _onItemTapped(int index) {
@@ -60,7 +90,6 @@ class _InventoryPageState extends State<InventoryPage> {
           fullName: widget.fullName,
           role: widget.role,
           initialIndex: 1,
-
         );
         break;
       case 2:
@@ -69,12 +98,14 @@ class _InventoryPageState extends State<InventoryPage> {
           role: widget.role,
           initialIndex: 2,
         );
+        break;
       case 3:
-        nextPage = SalesScreen(
+        nextPage = InventoryPage( // Changed from SalesScreen to ReportsPage
           fullName: widget.fullName,
           role: widget.role,
-          initialIndex: 1,
+          initialIndex: 3,
         );
+        break;
       case 4:
         nextPage = UsersPage(
           fullName: widget.fullName,
@@ -123,13 +154,7 @@ class _InventoryPageState extends State<InventoryPage> {
                 color: Colors.pink.shade300,
                 onTap: () {
                   Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => HomeScreen(
-                      fullName: widget.fullName,
-                      role: widget.role,),
-                    )
-                  );
+                  _loadStockData(); // Reload all branches data
                 },
               ),
               const SizedBox(height: 10),
@@ -140,9 +165,7 @@ class _InventoryPageState extends State<InventoryPage> {
                 color: Colors.pink.shade200,
                 onTap: () {
                   Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("Jasaan Branch Placeholder")),
-                  );
+                  _loadBranchInventory("JASAAN");
                 },
               ),
               const SizedBox(height: 10),
@@ -153,9 +176,7 @@ class _InventoryPageState extends State<InventoryPage> {
                 color: Colors.pink.shade200,
                 onTap: () {
                   Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("Puerto Branch Placeholder")),
-                  );
+                  _loadBranchInventory("PUERTO");
                 },
               ),
               const SizedBox(height: 10),
@@ -166,13 +187,7 @@ class _InventoryPageState extends State<InventoryPage> {
                 color: Colors.pink.shade200,
                 onTap: () {
                   Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) =>  HomeScreen(
-                      fullName: widget.fullName,
-                      role: widget.role,),
-                    )
-                  );
+                  _loadBranchInventory("CARMEN");
                 },
               ),
             ],
@@ -180,6 +195,40 @@ class _InventoryPageState extends State<InventoryPage> {
         ),
       ),
     );
+  }
+
+  Future<void> _loadBranchInventory(String branchName) async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final result = await _inventoryService.getBranchInventory(branchName);
+
+      if (result['error'] == null) {
+        setState(() {
+          _stockData = result['data'] ?? [];
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Loaded $branchName Branch Inventory')),
+        );
+      } else {
+        // If branch doesn't exist, show all data with branch filter note
+        await _loadStockData();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('$branchName branch not found, showing all branches')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error loading branch: $e')),
+      );
+      await _loadStockData(); // Fallback to all data
+    }
+
+    setState(() {
+      _isLoading = false;
+    });
   }
 
   Widget _branchButton(
@@ -204,6 +253,23 @@ class _InventoryPageState extends State<InventoryPage> {
     );
   }
 
+  // Filter stock data based on search query
+  List<dynamic> get _filteredStockData {
+    if (_searchQuery.isEmpty) return _stockData;
+
+    return _stockData.where((item) {
+      final product = item['products'] ?? {};
+      final productName = product['name']?.toString().toLowerCase() ?? '';
+      final brand = product['brands']?['name']?.toString().toLowerCase() ?? '';
+      final sku = product['sku']?.toString().toLowerCase() ?? '';
+      final query = _searchQuery.toLowerCase();
+
+      return productName.contains(query) ||
+          brand.contains(query) ||
+          sku.contains(query);
+    }).toList();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -223,12 +289,8 @@ class _InventoryPageState extends State<InventoryPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  widget.fullName,
-                  style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black87),
-                ),
-                Text(
-                  widget.role,
-                  style: const TextStyle(fontSize: 12, color: Colors.black54),
+                  "${widget.fullName} (${widget.role})",
+                  style: const TextStyle(fontSize: 13, color: Colors.black54),
                 ),
               ],
             ),
@@ -241,6 +303,11 @@ class _InventoryPageState extends State<InventoryPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             TextField(
+              onChanged: (value) {
+                setState(() {
+                  _searchQuery = value;
+                });
+              },
               decoration: InputDecoration(
                 hintText: "Search by Name, Brand, or Product ID",
                 prefixIcon: const Icon(Icons.search),
@@ -272,18 +339,17 @@ class _InventoryPageState extends State<InventoryPage> {
                     ),
                   ),
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: 20),
                 Expanded(
                   child: ElevatedButton.icon(
                     onPressed: () {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) =>
-                              HomeScreen(
-                                fullName: widget.fullName,
-                                role: widget.role,
-                        ),
+                          builder: (context) => InventoryHistoryScreen(
+                            fullName: widget.fullName,
+                            role: widget.role,
+                          ),
                         ),
                       );
                     },
@@ -305,35 +371,60 @@ class _InventoryPageState extends State<InventoryPage> {
               ],
             ),
             const SizedBox(height: 20),
-            // Stock summary header and sort dropdown here...
             // Stock list
-            Expanded(
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(8),
-                  boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 3)],
-                ),
-                child: ListView.builder(
-                  itemCount: stockData.length,
-                  itemBuilder: (context, index) {
-                    final item = stockData[index];
+      Expanded(
+        child: _isLoading
+            ? const Center(child: CircularProgressIndicator(color: Colors.pink))
+            : RefreshIndicator(
+          onRefresh: _loadStockData,
+          color: Colors.pink,
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(8),
+              boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 3)],
+            ),
+            child: _filteredStockData.isEmpty
+                ? const Center(
+              child: Text(
+                'No low stock items found',
+                style: TextStyle(fontSize: 16, color: Colors.grey),
+              ),
+            )
+                : ListView.builder(
+              itemCount: _filteredStockData.length,
+              itemBuilder: (context, index) {
+                    final item = _filteredStockData[index];
+                    final product = item['products'] ?? {};
+                    final branch = item['branches'] ?? {};
+                    final currentStock = item['current_stock'] ?? 0;
+                    final threshold = item['low_stock_threshold'] ?? 10;
+
                     return Container(
                       padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
                       decoration: BoxDecoration(
                         border: Border(
                           bottom: BorderSide(color: Colors.grey.shade200, width: 1),
                         ),
+                        color: currentStock <= threshold ? Colors.red.shade50 : null,
                       ),
                       child: Row(
                         children: [
-                          Expanded(flex: 1, child: Center(child: Text(item['sid']!))),
-                          Expanded(flex: 2, child: Center(child: Text(item['productId']!))),
-                          Expanded(flex: 2, child: Center(child: Text(item['brand']!))),
-                          Expanded(flex: 2, child: Center(child: Text(item['name']!))),
-                          Expanded(flex: 1, child: Center(child: Text(item['in']!))),
-                          Expanded(flex: 1, child: Center(child: Text(item['out']!))),
-                          Expanded(flex: 1, child: Center(child: Text(item['qty']!))),
+                          Expanded(flex: 1, child: Center(child: Text('${index + 1}'))),
+                          Expanded(flex: 2, child: Center(child: Text(product['sku']?.toString() ?? 'N/A'))),
+                          Expanded(flex: 2, child: Center(child: Text(product['brands']?['name']?.toString() ?? 'N/A'))),
+                          Expanded(flex: 2, child: Center(child: Text(product['name']?.toString() ?? 'N/A'))),
+                          Expanded(flex: 1, child: Center(
+                            child: Text(
+                              currentStock.toString(),
+                              style: TextStyle(
+                                color: currentStock <= threshold ? Colors.red : Colors.black,
+                                fontWeight: currentStock <= threshold ? FontWeight.bold : FontWeight.normal,
+                              ),
+                            ),
+                          )),
+                          Expanded(flex: 1, child: Center(child: Text(threshold.toString()))),
+                          Expanded(flex: 2, child: Center(child: Text(branch['name']?.toString() ?? 'N/A'))),
                         ],
                       ),
                     );
@@ -341,6 +432,7 @@ class _InventoryPageState extends State<InventoryPage> {
                 ),
               ),
             ),
+      )
           ],
         ),
       ),
