@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:vasenizzpos/dashboard/homescreen.dart';
+import 'package:vasenizzpos/dashboard/home_screen.dart';
 import 'package:vasenizzpos/dashboard/employee_homescreen.dart';
 
 void main() async {

@@ -1,19 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:vasenizzpos/dashboard/homescreen.dart';
-import 'package:vasenizzpos/inventory/inventory_screen.dart';
-import 'package:vasenizzpos/reports/reports_page.dart';
-import 'package:vasenizzpos/users/users_page.dart';
 import 'package:vasenizzpos/products/brand_products_page.dart';
 
 class MakeASale extends StatefulWidget {
   final String username;
-  final int initialIndex;
 
-  const MakeASale({
-    required this.username,
-    this.initialIndex = 1,
-    Key? key,
-  }) : super(key: key);
+  const MakeASale({required this.username, Key? key}) : super(key: key);
 
   @override
   State<MakeASale> createState() => _MakeASaleState();
@@ -28,7 +19,47 @@ class _MakeASaleState extends State<MakeASale> {
     {'name': 'Ex.', 'logo': 'assets/ex.png'},
   ];
 
-  int _selectedIndex = 1;
+  List<Map<String, dynamic>> cart = [];
+
+  void _addToCart(String brand, String product, double price) {
+    setState(() {
+      cart.add({'brand': brand, 'product': product, 'price': price});
+    });
+  }
+
+  void _completeSale() {
+    if (cart.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("No items in the sale")),
+      );
+      return;
+    }
+
+    double total = cart.fold(0, (sum, item) => sum + item['price']);
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Complete Sale"),
+        content: Text("Total amount: ₱${total.toStringAsFixed(2)}"),
+        actions: [
+          TextButton(
+            onPressed: () {
+              setState(() => cart.clear());
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text("Sale completed!")),
+              );
+            },
+            child: const Text("Confirm"),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -37,6 +68,10 @@ class _MakeASaleState extends State<MakeASale> {
       appBar: AppBar(
         backgroundColor: const Color(0xFFF5C6D3),
         elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
         title: Row(
           children: [
             CircleAvatar(
@@ -60,6 +95,12 @@ class _MakeASaleState extends State<MakeASale> {
             ),
           ],
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.shopping_cart, color: Colors.white),
+            onPressed: _completeSale,
+          ),
+        ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(16),
@@ -115,48 +156,6 @@ class _MakeASaleState extends State<MakeASale> {
             ),
           ],
         ),
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,
-        currentIndex: _selectedIndex,
-        selectedItemColor: Colors.pink,
-        unselectedItemColor: Colors.black54,
-        onTap: (index) {
-          setState(() => _selectedIndex = index);
-
-          if (index == 0) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (context) => HomeScreen(username: widget.username),
-              ),
-            );
-          } else if (index == 1) {
-            // Already on Sales
-          } else if (index == 2) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) => const InventoryPage()),
-            );
-          } else if (index == 3) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) => const ViewReportsPage()),
-            );
-          } else if (index == 4) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) => const UsersPage()),
-            );
-          }
-        },
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.dashboard_rounded), label: "Dashboard"),
-          BottomNavigationBarItem(icon: Icon(Icons.shopping_cart), label: "Sales"),
-          BottomNavigationBarItem(icon: Icon(Icons.inventory_2_outlined), label: "Inventory"),
-          BottomNavigationBarItem(icon: Icon(Icons.receipt_long), label: "Report"),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
-        ],
       ),
     );
   }

@@ -1,24 +1,32 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'generate_report_page.dart';
-import 'package:vasenizzpos/dashboard/homescreen.dart';
+import 'package:vasenizzpos/dashboard/home_screen.dart';
 import 'package:vasenizzpos/sales/sales_screen.dart';
 import 'package:vasenizzpos/inventory/inventory_screen.dart';
 import 'package:vasenizzpos/users/users_page.dart';
 import 'logs.dart';
 
 class ViewReportsPage extends StatefulWidget {
-  const ViewReportsPage({super.key});
+  final String fullName;
+  final String role;
+  final int initialIndex;
+
+  const ViewReportsPage({
+    required this.fullName,
+    required this.role,
+    this.initialIndex = 3,
+    super.key,
+  });
 
   @override
   State<ViewReportsPage> createState() => _ViewReportsPageState();
 }
 
 class _ViewReportsPageState extends State<ViewReportsPage> {
+  late int _selectedIndex;
   String selectedRange = "1W";
-  int _selectedIndex = 3;
 
-  // Add the logs list here
   List<Map<String, String>> logs = [
     {
       'action': 'Product Added',
@@ -40,28 +48,53 @@ class _ViewReportsPageState extends State<ViewReportsPage> {
     },
   ];
 
+  @override
+  void initState() {
+    super.initState();
+    _selectedIndex = widget.initialIndex;
+  }
+
   void _onNavTapped(int index) {
     if (index == _selectedIndex) return;
 
     Widget target;
     switch (index) {
       case 0:
-        target = const HomeScreen(username: 'username');
+        target = HomeScreen(
+          fullName: widget.fullName,
+          role: widget.role,
+          initialIndex: 0,
+        );
         break;
       case 1:
-        target = const SalesScreen();
+        target = SalesScreen(
+          fullName: widget.fullName,
+          role: widget.role,
+        );
         break;
       case 2:
-        target = const InventoryPage();
+        target = InventoryPage(
+          fullName: widget.fullName,
+          role: widget.role,
+        );
         break;
       case 3:
-        target = const ViewReportsPage();
+        target = ViewReportsPage(
+          fullName: widget.fullName,
+          role: widget.role,
+        );
         break;
       case 4:
-        target = const UsersPage();
+        target = UsersPage(
+          fullName: widget.fullName,
+          role: widget.role,
+        );
         break;
       default:
-        target = const ViewReportsPage();
+        target = ViewReportsPage(
+          fullName: widget.fullName,
+          role: widget.role,
+        );
     }
 
     Navigator.pushReplacement(
@@ -97,16 +130,15 @@ class _ViewReportsPageState extends State<ViewReportsPage> {
             const SizedBox(width: 12),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: const [
-                Text("View Reports",
+              children: [
+                Text(widget.fullName,
                     style:
-                    TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                Text("Thofia Concepcion (03085)",
-                    style: TextStyle(fontSize: 13, color: Colors.black54)),
+                    const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                Text(widget.role,
+                    style: const TextStyle(fontSize: 13, color: Colors.black54)),
               ],
             ),
             const Spacer(),
-            // FIXED: This is the correct Logs button with navigation
             ElevatedButton.icon(
               onPressed: () {
                 Navigator.push(
@@ -122,8 +154,7 @@ class _ViewReportsPageState extends State<ViewReportsPage> {
                   style: TextStyle(color: Colors.black, fontSize: 13)),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.white,
-                padding:
-                const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(20)),
               ),
@@ -134,7 +165,6 @@ class _ViewReportsPageState extends State<ViewReportsPage> {
           ],
         ),
       ),
-
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         child: Column(
@@ -142,7 +172,6 @@ class _ViewReportsPageState extends State<ViewReportsPage> {
           children: [
             Row(
               children: [
-                // FIXED: Remove the Logs navigation from _tabButton
                 _tabButton("Analytics Dashboard", true),
                 const SizedBox(width: 8),
                 _tabButton("Generate Report", false, onTap: () {
@@ -155,7 +184,6 @@ class _ViewReportsPageState extends State<ViewReportsPage> {
               ],
             ),
             const SizedBox(height: 20),
-
             const Text("Sales Overview",
                 style: TextStyle(
                     fontSize: 18,
@@ -163,7 +191,6 @@ class _ViewReportsPageState extends State<ViewReportsPage> {
                     fontFamily: "Poppins")),
             const Divider(thickness: 1),
             const SizedBox(height: 10),
-
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
@@ -173,9 +200,7 @@ class _ViewReportsPageState extends State<ViewReportsPage> {
                     const Color(0xFFD2C6FC)),
               ],
             ),
-
             const SizedBox(height: 25),
-
             Center(
               child: Wrap(
                 spacing: 6,
@@ -190,7 +215,6 @@ class _ViewReportsPageState extends State<ViewReportsPage> {
                     .toList(),
               ),
             ),
-
             const SizedBox(height: 25),
             const Text("Revenue",
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
@@ -209,11 +233,9 @@ class _ViewReportsPageState extends State<ViewReportsPage> {
                     labelStyle: TextStyle(color: Colors.green)),
               ],
             ),
-
             const SizedBox(height: 20),
             _buildLineChart(),
             const SizedBox(height: 30),
-
             const Text("Inventory by Brand",
                 style: TextStyle(
                     fontSize: 18,
@@ -229,9 +251,7 @@ class _ViewReportsPageState extends State<ViewReportsPage> {
             const SizedBox(height: 12),
             _buildBrandInventory("Brand3", "Total Prod. * Recently added prod.",
                 showLow: true),
-
             const SizedBox(height: 30),
-
             const Text("Top Selling Products",
                 style: TextStyle(
                     fontSize: 18,
@@ -239,7 +259,6 @@ class _ViewReportsPageState extends State<ViewReportsPage> {
                     fontFamily: "Poppins")),
             const Divider(thickness: 1),
             const SizedBox(height: 15),
-
             GridView.count(
               crossAxisCount: 2,
               shrinkWrap: true,
@@ -257,7 +276,6 @@ class _ViewReportsPageState extends State<ViewReportsPage> {
           ],
         ),
       ),
-
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
         onTap: _onNavTapped,
@@ -438,8 +456,7 @@ class _ViewReportsPageState extends State<ViewReportsPage> {
     );
   }
 
-  Widget _statCard(
-      IconData icon, String value, String label, Color bgColor) {
+  Widget _statCard(IconData icon, String value, String label, Color bgColor) {
     return Container(
       width: 150,
       height: 100,

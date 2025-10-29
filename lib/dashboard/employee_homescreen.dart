@@ -3,13 +3,14 @@ import 'package:vasenizzpos/users/employee_page.dart';
 
 class EmployeeHomeScreen extends StatefulWidget {
   final String fullName;
-  final String role;
   final String userId;
+  final String role;
+
 
   const EmployeeHomeScreen({
     required this.fullName,
-    required this.role,
     required this.userId,
+    required this.role,
     Key? key,
   }) : super(key: key);
 
@@ -27,7 +28,6 @@ class _EmployeeHomeScreenState extends State<EmployeeHomeScreen> {
     super.initState();
     _pages = [
       SalesPage(),
-      InventoryPage(),
       UserProfileScreen(
         userId: widget.userId,
       ),
@@ -104,9 +104,3 @@ class SalesPage extends StatelessWidget {
   }
 }
 
-class InventoryPage extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Center(child: Text("Inventory Page Content"));
-  }
-}

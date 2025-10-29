@@ -1,18 +1,22 @@
 import 'package:flutter/material.dart';
-import 'package:vasenizzpos/dashboard/homescreen.dart';
+import 'package:vasenizzpos/dashboard/employee_homescreen.dart';
+import 'package:vasenizzpos/dashboard/home_screen.dart';
 import 'package:vasenizzpos/main.dart';
 import 'emp_profile.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:vasenizzpos/sales/sales_screen.dart';
+import 'package:vasenizzpos/inventory/inventory_screen.dart';
+
 
 class UsersPage extends StatefulWidget {
   final String fullName;
-  final String? role;
+  final String role;
   final int initialIndex;
 
   const UsersPage({
     Key? key,
     required this.fullName,
-    this.role,
+    required this.role,
     this.initialIndex = 4,
   }) : super(key: key);
 
@@ -31,7 +35,7 @@ class _UsersPageState extends State<UsersPage> {
   String? selectedBranch;
   String? selectedRole;
 
-  bool showEmployeeList = false; // Employee list visibility
+  bool showEmployeeList = false;
 
   @override
   void initState() {
@@ -39,7 +43,6 @@ class _UsersPageState extends State<UsersPage> {
     _fetchEmployees();
   }
 
-  // Auto-generate User ID like E001, E002...
   Future<String> _generateUserId() async {
     try {
       final response = await Supabase.instance.client
@@ -93,7 +96,7 @@ class _UsersPageState extends State<UsersPage> {
         'user_id': userId,
         'branch': selectedBranch,
         'role': selectedRole,
-        'password': '0', // default password
+        'password': '',
       })
           .select();
 
@@ -150,20 +153,35 @@ class _UsersPageState extends State<UsersPage> {
         nextPage = HomeScreen(
           fullName: widget.fullName,
           role: widget.role,
+          initialIndex: 0,
         );
         break;
       case 1:
-        nextPage = Scaffold(body: Center(child: Text("Sales Screen")));
+        nextPage = SalesScreen(
+          fullName: widget.fullName,
+          role: widget.role,
+          initialIndex: 1,
+
+        );
         break;
       case 2:
-        nextPage = Scaffold(body: Center(child: Text("Inventory Page")));
-        break;
+        nextPage = InventoryPage(
+          fullName: widget.fullName,
+          role: widget.role,
+          initialIndex: 2,
+        );
       case 3:
-        nextPage = Scaffold(body: Center(child: Text("Reports Page")));
-        break;
+        nextPage = SalesScreen(
+          fullName: widget.fullName,
+          role: widget.role,
+          initialIndex: 1,
+        );
       case 4:
-        nextPage =
-            UsersPage(fullName: widget.fullName, role: widget.role);
+        nextPage = UsersPage(
+          fullName: widget.fullName,
+          role: widget.role,
+          initialIndex: 4,
+        );
         break;
       default:
         return;

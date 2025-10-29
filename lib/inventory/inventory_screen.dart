@@ -1,45 +1,28 @@
 import 'package:flutter/material.dart';
-//import 'package:vasenizzpos/dashboard/HomeScreen.dart';
+import 'package:vasenizzpos/dashboard/home_screen.dart';
 import 'package:vasenizzpos/sales/sales_screen.dart';
 import 'package:vasenizzpos/reports/reports_page.dart';
-//import 'package:vasenizzpos/users/users_page.dart';
-import 'package:vasenizzpos/branches/carmen_branch.dart';
+import 'package:vasenizzpos/users/users_page.dart';
 import 'inventory_history.dart';
 
-class ManageAllPage extends StatelessWidget {
-  const ManageAllPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8EDF3),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFFF5C6D3),
-        title: const Text(
-          "Manage All Branches",
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-        centerTitle: true,
-      ),
-      body: const Center(
-        child: Text(
-          "📦 Manage All Branches Page Placeholder",
-          style: TextStyle(fontSize: 18, color: Colors.pink),
-        ),
-      ),
-    );
-  }
-}
-
 class InventoryPage extends StatefulWidget {
-  const InventoryPage({super.key});
+  final String fullName;
+  final String role;
+  final int initialIndex;
+
+  const InventoryPage({
+    required this.fullName,
+    required this.role,
+    this.initialIndex = 2,
+    super.key,
+  });
 
   @override
   State<InventoryPage> createState() => _InventoryPageState();
 }
 
 class _InventoryPageState extends State<InventoryPage> {
-  int _selectedIndex = 2; // Inventory tab index
+  late int _selectedIndex;
 
   final List<Map<String, String>> stockData = List.generate(
     12,
@@ -54,25 +37,50 @@ class _InventoryPageState extends State<InventoryPage> {
     },
   );
 
+  @override
+  void initState() {
+    super.initState();
+    _selectedIndex = widget.initialIndex;
+  }
+
   void _onItemTapped(int index) {
     if (index == _selectedIndex) return;
 
     Widget nextPage;
     switch (index) {
       case 0:
-        nextPage = HomeScreen(username: '');
+        nextPage = HomeScreen(
+          fullName: widget.fullName,
+          role: widget.role,
+          initialIndex: 0,
+        );
         break;
       case 1:
-        nextPage = SalesScreen();
+        nextPage = SalesScreen(
+          fullName: widget.fullName,
+          role: widget.role,
+          initialIndex: 1,
+
+        );
         break;
       case 2:
-        nextPage = InventoryPage();
-        break;
+        nextPage = InventoryPage(
+          fullName: widget.fullName,
+          role: widget.role,
+          initialIndex: 2,
+        );
       case 3:
-        nextPage = ViewReportsPage();
-        break;
+        nextPage = SalesScreen(
+          fullName: widget.fullName,
+          role: widget.role,
+          initialIndex: 1,
+        );
       case 4:
-        nextPage = UsersPage();
+        nextPage = UsersPage(
+          fullName: widget.fullName,
+          role: widget.role,
+          initialIndex: 4,
+        );
         break;
       default:
         return;
@@ -88,7 +96,6 @@ class _InventoryPageState extends State<InventoryPage> {
     );
   }
 
-  // 🔹 Branch selection dialog
   void _showBranchSelector(BuildContext context) {
     showDialog(
       context: context,
@@ -118,7 +125,10 @@ class _InventoryPageState extends State<InventoryPage> {
                   Navigator.pop(context);
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (_) => const ManageAllPage()),
+                    MaterialPageRoute(builder: (_) => HomeScreen(
+                      fullName: widget.fullName,
+                      role: widget.role,),
+                    )
                   );
                 },
               ),
@@ -158,7 +168,10 @@ class _InventoryPageState extends State<InventoryPage> {
                   Navigator.pop(context);
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (_) => const CarmenScreen()),
+                    MaterialPageRoute(builder: (_) =>  HomeScreen(
+                      fullName: widget.fullName,
+                      role: widget.role,),
+                    )
                   );
                 },
               ),
@@ -206,17 +219,16 @@ class _InventoryPageState extends State<InventoryPage> {
               backgroundColor: Colors.white,
             ),
             const SizedBox(width: 10),
-            const Column(
+            Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  "Inventory Manager",
-                  style: TextStyle(
-                      fontWeight: FontWeight.bold, color: Colors.black87),
+                  widget.fullName,
+                  style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black87),
                 ),
                 Text(
-                  "Thofia Concepcion (03085)",
-                  style: TextStyle(fontSize: 12, color: Colors.black54),
+                  widget.role,
+                  style: const TextStyle(fontSize: 12, color: Colors.black54),
                 ),
               ],
             ),
@@ -268,7 +280,10 @@ class _InventoryPageState extends State<InventoryPage> {
                         context,
                         MaterialPageRoute(
                           builder: (context) =>
-                          const InventoryHistoryScreen(),
+                              HomeScreen(
+                                fullName: widget.fullName,
+                                role: widget.role,
+                        ),
                         ),
                       );
                     },
@@ -290,108 +305,24 @@ class _InventoryPageState extends State<InventoryPage> {
               ],
             ),
             const SizedBox(height: 20),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  "Stock Summary",
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                    color: Colors.black87,
-                  ),
-                ),
-                Row(
-                  children: [
-                    const Text(
-                      "Sort by:",
-                      style:
-                      TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
-                    ),
-                    const SizedBox(width: 6),
-                    DropdownButton<String>(
-                      items: const [
-                        DropdownMenuItem(value: 'S.ID', child: Text('S.ID')),
-                        DropdownMenuItem(
-                            value: 'Product ID', child: Text('Product ID')),
-                        DropdownMenuItem(value: 'Brand', child: Text('Brand')),
-                      ],
-                      onChanged: (_) {},
-                      hint: const Text('S.ID'),
-                      underline: const SizedBox(),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Container(
-              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
-              decoration: BoxDecoration(
-                color: Colors.pink.shade100,
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: const Row(
-                children: [
-                  Expanded(
-                      flex: 1,
-                      child: Center(
-                          child: Text("S.ID",
-                              style: TextStyle(fontWeight: FontWeight.bold)))),
-                  Expanded(
-                      flex: 2,
-                      child: Center(
-                          child: Text("PRODUCT ID",
-                              style: TextStyle(fontWeight: FontWeight.bold)))),
-                  Expanded(
-                      flex: 2,
-                      child: Center(
-                          child: Text("BRAND",
-                              style: TextStyle(fontWeight: FontWeight.bold)))),
-                  Expanded(
-                      flex: 2,
-                      child: Center(
-                          child: Text("NAME",
-                              style: TextStyle(fontWeight: FontWeight.bold)))),
-                  Expanded(
-                      flex: 1,
-                      child: Center(
-                          child: Text("IN",
-                              style: TextStyle(fontWeight: FontWeight.bold)))),
-                  Expanded(
-                      flex: 1,
-                      child: Center(
-                          child: Text("OUT",
-                              style: TextStyle(fontWeight: FontWeight.bold)))),
-                  Expanded(
-                      flex: 1,
-                      child: Center(
-                          child: Text("QTY.",
-                              style: TextStyle(fontWeight: FontWeight.bold)))),
-                ],
-              ),
-            ),
-            const SizedBox(height: 8),
+            // Stock summary header and sort dropdown here...
+            // Stock list
             Expanded(
               child: Container(
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(8),
-                  boxShadow: const [
-                    BoxShadow(color: Colors.black12, blurRadius: 3)
-                  ],
+                  boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 3)],
                 ),
                 child: ListView.builder(
                   itemCount: stockData.length,
                   itemBuilder: (context, index) {
                     final item = stockData[index];
                     return Container(
-                      padding: const EdgeInsets.symmetric(
-                          vertical: 10, horizontal: 6),
+                      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
                       decoration: BoxDecoration(
                         border: Border(
-                          bottom: BorderSide(
-                              color: Colors.grey.shade200, width: 1),
+                          bottom: BorderSide(color: Colors.grey.shade200, width: 1),
                         ),
                       ),
                       child: Row(

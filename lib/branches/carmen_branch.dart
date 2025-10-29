@@ -1,12 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
-import 'package:vasenizzpos/inventory/inventory_screen.dart';
 import 'package:vasenizzpos/inventory/view_inventory.dart';
-//import 'package:vasenizzpos/dashboard/homescreen.dart';
-
-import 'package:vasenizzpos/sales/sales_screen.dart';
-import 'package:vasenizzpos/reports/reports_page.dart';
-import 'package:vasenizzpos/users/users_page.dart';
 
 class CarmenScreen extends StatefulWidget {
   const CarmenScreen({super.key});
@@ -16,43 +10,11 @@ class CarmenScreen extends StatefulWidget {
 }
 
 class _CarmenScreenState extends State<CarmenScreen> {
-  int _selectedIndex = 2;
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
 
-  // Temporary list of brands
+
   List<String> _brands = ["Beauty Vault", "Lumi", "Brilliant", "VaseNizz", "NoBrand"];
-
-  void _onItemTapped(int index) {
-    if (index == _selectedIndex) return;
-
-    Widget nextPage;
-    switch (index) {
-      case 0:
-        nextPage = HomeScreen(username: '');
-        break;
-      case 1:
-        nextPage = const SalesScreen();
-        break;
-      case 2:
-        nextPage = const InventoryPage();
-        break;
-      case 3:
-        nextPage = const ViewReportsPage();
-        break;
-      case 4:
-        nextPage = const UsersPage();
-        break;
-      default:
-        return;
-    }
-
-    Navigator.of(context).pushReplacement(PageRouteBuilder(
-      pageBuilder: (_, __, ___) => nextPage,
-      transitionDuration: Duration.zero,
-      reverseTransitionDuration: Duration.zero,
-    ));
-  }
 
   void _showUpdateBrandPopup() {
     final TextEditingController brandNameController = TextEditingController();
@@ -151,7 +113,7 @@ class _CarmenScreenState extends State<CarmenScreen> {
                   child: ListView.builder(
                     itemCount: _brands.length,
                     itemBuilder: (context, index) {
-                      final brand = _brands[index] ?? '';
+                      final brand = _brands[index];
                       return Container(
                         margin: const EdgeInsets.symmetric(vertical: 6),
                         decoration: BoxDecoration(
@@ -278,7 +240,7 @@ class _CarmenScreenState extends State<CarmenScreen> {
                   ),
                 ),
                 const SizedBox(width: 10),
-                // Low stock alert (unchanged)
+                // Low stock alert
                 Expanded(
                   flex: 2,
                   child: Container(
@@ -315,7 +277,7 @@ class _CarmenScreenState extends State<CarmenScreen> {
               ],
             ),
             const SizedBox(height: 20),
-            // Calendar unchanged...
+            // Calendar
             Expanded(
               child: Container(
                 padding: const EdgeInsets.all(8),
@@ -350,21 +312,6 @@ class _CarmenScreenState extends State<CarmenScreen> {
             ),
           ],
         ),
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,
-        currentIndex: _selectedIndex,
-        selectedItemColor: Colors.pink,
-        unselectedItemColor: Colors.black54,
-        onTap: _onItemTapped,
-        items: const [
-          BottomNavigationBarItem(
-              icon: Icon(Icons.dashboard_rounded), label: "Dashboard"),
-          BottomNavigationBarItem(icon: Icon(Icons.shopping_cart), label: "Sales"),
-          BottomNavigationBarItem(icon: Icon(Icons.inventory_2_outlined), label: "Inventory"),
-          BottomNavigationBarItem(icon: Icon(Icons.receipt_long), label: "Report"),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
-        ],
       ),
     );
   }

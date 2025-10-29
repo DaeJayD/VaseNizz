@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:vasenizzpos/dashboard/homescreen.dart';
+import 'package:vasenizzpos/dashboard/home_screen.dart';
 import 'package:vasenizzpos/sales/make_a_sale.dart';
 
 class ReceiptPage extends StatelessWidget {
@@ -76,7 +76,6 @@ class ReceiptPage extends StatelessWidget {
                               MaterialPageRoute(
                                 builder: (context) => MakeASale(
                                   username: 'Cashier', // or use your logged-in name
-                                  initialIndex: 1, // open Sales tab
                                 ),
                               ),
                                   (route) => false,

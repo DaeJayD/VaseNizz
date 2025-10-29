@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:vasenizzpos/dashboard/homescreen.dart';
+import 'package:vasenizzpos/dashboard/home_screen.dart';
 import 'package:vasenizzpos/inventory/inventory_screen.dart';
 import 'package:vasenizzpos/reports/reports_page.dart';
 import 'package:vasenizzpos/users/users_page.dart';
@@ -7,14 +7,29 @@ import 'make_a_sale.dart';
 import 'sales_history_page.dart';
 
 class SalesScreen extends StatefulWidget {
-  const SalesScreen({super.key});
+  final String fullName;
+  final String role;
+  final int initialIndex;
+
+  const SalesScreen({
+    required this.fullName,
+    required this.role,
+    this.initialIndex = 1,
+    super.key,
+  });
 
   @override
   State<SalesScreen> createState() => _SalesScreenState();
 }
 
 class _SalesScreenState extends State<SalesScreen> {
-  int _selectedIndex = 1;
+  late int _selectedIndex;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedIndex = widget.initialIndex;
+  }
 
   void _onItemTapped(int index) {
     if (index == _selectedIndex) return;
@@ -22,19 +37,36 @@ class _SalesScreenState extends State<SalesScreen> {
     Widget nextPage;
     switch (index) {
       case 0:
-        nextPage = HomeScreen(username: '');
+        nextPage = HomeScreen(
+          fullName: widget.fullName,
+          role: widget.role,
+          initialIndex: 0,
+        );
         break;
       case 1:
-        nextPage = SalesScreen();
+        nextPage = SalesScreen(
+          fullName: widget.fullName,
+          role: widget.role,
+          initialIndex: 1
+        );
         break;
       case 2:
-        nextPage = InventoryPage();
+        nextPage = InventoryPage(
+          fullName: widget.fullName,
+          role: widget.role,
+        );
         break;
       case 3:
-        nextPage = ViewReportsPage();
+        nextPage = ViewReportsPage(
+          fullName: widget.fullName,
+          role: widget.role,
+        );
         break;
       case 4:
-        nextPage = UsersPage();
+        nextPage = UsersPage(
+          fullName: widget.fullName,
+          role: widget.role,
+        );
         break;
       default:
         return;
@@ -49,6 +81,7 @@ class _SalesScreenState extends State<SalesScreen> {
       ),
     );
   }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -76,13 +109,13 @@ class _SalesScreenState extends State<SalesScreen> {
                   backgroundColor: Colors.white,
                 ),
                 const SizedBox(width: 10),
-                const Column(
+                Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text("Sales Manager",
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                    Text("Thofia Concepcion (03085)",
-                        style: TextStyle(color: Colors.black54, fontSize: 13)),
+                    Text(widget.fullName,
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    Text(widget.role,
+                        style: const TextStyle(color: Colors.black54, fontSize: 13)),
                   ],
                 ),
                 const Spacer(),
@@ -114,7 +147,12 @@ class _SalesScreenState extends State<SalesScreen> {
                     onTap: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (context) => const MakeASale(username: '')),
+                        MaterialPageRoute(
+                          builder: (context) => SalesScreen(
+                            fullName: widget.fullName,
+                            role: widget.role,
+                          ),
+                        ),
                       );
                     },
                     child: Container(
@@ -144,7 +182,12 @@ class _SalesScreenState extends State<SalesScreen> {
                     onTap: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (context) => const SalesHistoryPage()),
+                        MaterialPageRoute(
+                          builder: (context) => SalesScreen(
+                            fullName: widget.fullName,
+                            role: widget.role,
+                          ),
+                        ),
                       );
                     },
                     child: Container(
