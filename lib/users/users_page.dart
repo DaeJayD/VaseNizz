@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:vasenizzpos/dashboard/employee_homescreen.dart';
 import 'package:vasenizzpos/dashboard/home_screen.dart';
 import 'package:vasenizzpos/main.dart';
 import 'emp_profile.dart';
@@ -7,16 +6,19 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:vasenizzpos/sales/sales_screen.dart';
 import 'package:vasenizzpos/inventory/inventory_screen.dart';
 
-
 class UsersPage extends StatefulWidget {
   final String fullName;
   final String role;
+  final String userId;
+  final String location;
   final int initialIndex;
 
   const UsersPage({
     Key? key,
     required this.fullName,
     required this.role,
+    required this.userId,
+    required this.location,
     this.initialIndex = 4,
   }) : super(key: key);
 
@@ -26,12 +28,15 @@ class UsersPage extends StatefulWidget {
 
 class _UsersPageState extends State<UsersPage> {
   int _selectedIndex = 4;
+
   List<Map<String, dynamic>> employees = [];
+  List<Map<String, dynamic>> branches = [];   // ✅ NEW: real branches list
 
   TextEditingController nameController = TextEditingController();
   TextEditingController phoneController = TextEditingController();
   TextEditingController dobController = TextEditingController();
   TextEditingController usernameController = TextEditingController();
+
   String? selectedBranch;
   String? selectedRole;
 
@@ -41,9 +46,28 @@ class _UsersPageState extends State<UsersPage> {
   void initState() {
     super.initState();
     _fetchEmployees();
+    _fetchBranches();  // ✅ NEW
   }
 
-  Future<String> _generateUserId() async {
+  // ✅ FETCH BRANCH LOCATIONS FROM SUPABASE
+  Future<void> _fetchBranches() async {
+    try {
+      final response = await Supabase.instance.client
+          .from('branches')
+          .select('location')
+          .order('location');
+
+      if (response != null && response.isNotEmpty) {
+        setState(() {
+          branches = List<Map<String, dynamic>>.from(response);
+        });
+      }
+    } catch (e) {
+      print("Error fetching branches: $e");
+    }
+  }
+
+  Future<String> _generateuserId() async {
     try {
       final response = await Supabase.instance.client
           .from('employees')
@@ -53,10 +77,9 @@ class _UsersPageState extends State<UsersPage> {
           .select();
 
       if (response != null && response.isNotEmpty) {
-        String lastId = response[0]['user_id']; // e.g., "E003"
+        String lastId = response[0]['user_id'];
         int number = int.parse(lastId.substring(1));
-        number += 1;
-        return 'E${number.toString().padLeft(3, '0')}';
+        return 'E${(number + 1).toString().padLeft(3, '0')}';
       } else {
         return 'E001';
       }
@@ -67,7 +90,7 @@ class _UsersPageState extends State<UsersPage> {
   }
 
   Future<void> _createUser() async {
-    final userId = await _generateUserId();
+    final userId = await _generateuserId();
     final name = nameController.text.trim();
     final phone = phoneController.text.trim();
     final dob = dobController.text.trim();
@@ -94,21 +117,22 @@ class _UsersPageState extends State<UsersPage> {
         'dob': dob,
         'username': username,
         'user_id': userId,
-        'branch': selectedBranch,
+        'branch': selectedBranch,     // ✅ REAL LOCATION SAVED
         'role': selectedRole,
         'password': '1',
-      })
-          .select();
+      }).select();
 
       if (response != null && response.isNotEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('User $userId created successfully!')),
         );
+
         _fetchEmployees();
         nameController.clear();
         phoneController.clear();
         dobController.clear();
         usernameController.clear();
+
         setState(() {
           selectedBranch = null;
           selectedRole = null;
@@ -127,9 +151,7 @@ class _UsersPageState extends State<UsersPage> {
 
   Future<void> _fetchEmployees() async {
     try {
-      final response = await Supabase.instance.client
-          .from('employees')
-          .select();
+      final response = await Supabase.instance.client.from('employees').select();
 
       setState(() {
         employees = response != null
@@ -138,9 +160,7 @@ class _UsersPageState extends State<UsersPage> {
       });
     } catch (e) {
       print('Error fetching employees: $e');
-      setState(() {
-        employees = [];
-      });
+      setState(() => employees = []);
     }
   }
 
@@ -153,6 +173,8 @@ class _UsersPageState extends State<UsersPage> {
         nextPage = HomeScreen(
           fullName: widget.fullName,
           role: widget.role,
+          userId: widget.userId,
+          location: widget.location,
           initialIndex: 0,
         );
         break;
@@ -160,26 +182,35 @@ class _UsersPageState extends State<UsersPage> {
         nextPage = SalesScreen(
           fullName: widget.fullName,
           role: widget.role,
+          userId: widget.userId,
+          location: widget.location,
           initialIndex: 1,
-
         );
         break;
       case 2:
         nextPage = InventoryPage(
           fullName: widget.fullName,
           role: widget.role,
+          userId: widget.userId,
+          location: widget.location,
           initialIndex: 2,
         );
+        break;
       case 3:
         nextPage = SalesScreen(
           fullName: widget.fullName,
           role: widget.role,
+          userId: widget.userId,
+          location: widget.location,
           initialIndex: 1,
         );
+        break;
       case 4:
         nextPage = UsersPage(
           fullName: widget.fullName,
           role: widget.role,
+          userId: widget.userId,
+          location: widget.location,
           initialIndex: 4,
         );
         break;
@@ -190,7 +221,7 @@ class _UsersPageState extends State<UsersPage> {
     Navigator.pushReplacement(
       context,
       PageRouteBuilder(
-        pageBuilder: (context, animation1, animation2) => nextPage,
+        pageBuilder: (_, __, ___) => nextPage,
         transitionDuration: Duration.zero,
         reverseTransitionDuration: Duration.zero,
       ),
@@ -201,6 +232,7 @@ class _UsersPageState extends State<UsersPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF8E9EE),
+
       appBar: AppBar(
         automaticallyImplyLeading: false,
         backgroundColor: const Color(0xFFFFB6C1),
@@ -238,11 +270,14 @@ class _UsersPageState extends State<UsersPage> {
           ),
         ],
       ),
+
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
+
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+
             Center(
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
@@ -253,13 +288,12 @@ class _UsersPageState extends State<UsersPage> {
                   ),
                 ),
                 onPressed: () {
-                  // Show the employee list in a modal
                   showModalBottomSheet(
                     context: context,
                     isScrollControlled: true,
                     backgroundColor: Colors.transparent,
                     builder: (context) => DraggableScrollableSheet(
-                      initialChildSize: 0.5, // half screen
+                      initialChildSize: 0.5,
                       minChildSize: 0.3,
                       maxChildSize: 0.9,
                       expand: false,
@@ -318,7 +352,7 @@ class _UsersPageState extends State<UsersPage> {
                                                         fontSize: 16)),
                                                 const SizedBox(height: 2),
                                                 Text(
-                                                    "${employee['user_id'] ?? ''}  ${employee['role'] ?? ''}",
+                                                    "${employee['user_id']}  ${employee['role']}",
                                                     style: const TextStyle(
                                                         color: Colors.black54)),
                                                 const SizedBox(height: 2),
@@ -333,13 +367,15 @@ class _UsersPageState extends State<UsersPage> {
                                               Navigator.push(
                                                 context,
                                                 MaterialPageRoute(
-                                                  builder: (context) => EmployeeProfilePage(
-                                                    userId: employee['user_id'],
-                                                  ),
+                                                  builder: (context) =>
+                                                      EmployeeProfilePage(
+                                                        userId: employee['user_id'],
+                                                      ),
                                                 ),
                                               );
                                             },
-                                            icon: const Icon(Icons.edit, color: Colors.redAccent, size: 18),
+                                            icon: const Icon(Icons.edit,
+                                                color: Colors.redAccent, size: 18),
                                             label: const Text(
                                               "Edit",
                                               style: TextStyle(color: Colors.redAccent),
@@ -361,103 +397,15 @@ class _UsersPageState extends State<UsersPage> {
                 child: const Text(
                   "MANAGE USERS",
                   style: TextStyle(
-                    letterSpacing: 1,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
+                      letterSpacing: 1,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white),
                 ),
               ),
             ),
 
-            const SizedBox(height: 20),
-            if (showEmployeeList)
-              Column(
-                children: employees.map((employee) {
-                  return Container(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.grey.shade300),
-                    ),
-                    child: Row(
-                      children: [
-                        // Edit button
-                        TextButton.icon(
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => EmployeeProfilePage(
-                                  userId: employee['user_id'], // employee from ListView.builder
-                                ),
-                              ),
-                            );
-                          },
-                          icon: const Icon(Icons.edit, color: Colors.redAccent, size: 18),
-                          label: const Text(
-                            "Edit",
-                            style: TextStyle(color: Colors.redAccent),
-                          ),
-                        ),
-
-                        const SizedBox(width: 8),
-
-                        // Delete button
-                        TextButton.icon(
-                          onPressed: () async {
-                            bool confirmed = await showDialog(
-                              context: context,
-                              builder: (context) => AlertDialog(
-                                title: const Text("Confirm Delete"),
-                                content: Text(
-                                    "Are you sure you want to delete ${employee['name']}?"),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () => Navigator.pop(context, false),
-                                    child: const Text("Cancel"),
-                                  ),
-                                  TextButton(
-                                    onPressed: () => Navigator.pop(context, true),
-                                    child: const Text(
-                                        "Delete",
-                                        style: TextStyle(color: Colors.red)
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            );
-
-                            if (confirmed) {
-                              try {
-                                await Supabase.instance.client
-                                    .from('employees')
-                                    .delete()
-                                    .eq('user_id', employee['user_id']);
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text("${employee['name']} deleted.")),
-                                );
-                                _fetchEmployees();
-                              } catch (e) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text("Error deleting user: $e")),
-                                );
-                              }
-                            }
-                          },
-                          icon: const Icon(Icons.delete, color: Colors.red, size: 18),
-                          label: const Text(
-                            "Delete",
-                            style: TextStyle(color: Colors.red),
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                }).toList(),
-              ),
             const SizedBox(height: 24),
+
             const Text(
               "Create New User",
               style: TextStyle(
@@ -465,7 +413,9 @@ class _UsersPageState extends State<UsersPage> {
                   fontSize: 18,
                   color: Colors.black87),
             ),
+
             const SizedBox(height: 12),
+
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
@@ -473,6 +423,7 @@ class _UsersPageState extends State<UsersPage> {
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: Colors.grey.shade300),
               ),
+
               child: Column(
                 children: [
                   buildTextField("Name", "Employee Name",
@@ -483,12 +434,16 @@ class _UsersPageState extends State<UsersPage> {
                       controller: dobController),
                   buildTextField("Username", "Username",
                       controller: usernameController),
+
                   const SizedBox(height: 8),
+
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
+                      // ✅ REAL BRANCHES DROPDOWN (LOCATION ONLY)
                       Flexible(
                         child: DropdownButtonFormField<String>(
+                          value: selectedBranch,
                           decoration: InputDecoration(
                             contentPadding: const EdgeInsets.symmetric(
                                 horizontal: 8, vertical: 6),
@@ -496,12 +451,15 @@ class _UsersPageState extends State<UsersPage> {
                                 borderRadius: BorderRadius.circular(6)),
                           ),
                           hint: const Text("Assign Branch"),
-                          items: ["Branch 1", "Branch 2"]
-                              .map((val) => DropdownMenuItem(
-                            value: val,
-                            child: Text(val),
-                          ))
-                              .toList(),
+
+                          items: branches
+                              .map<DropdownMenuItem<String>>((branch) {
+                            final String loc =
+                                branch['location']?.toString() ?? "";
+                            return DropdownMenuItem(
+                                value: loc, child: Text(loc));
+                          }).toList(),
+
                           onChanged: (val) {
                             setState(() {
                               selectedBranch = val;
@@ -509,7 +467,9 @@ class _UsersPageState extends State<UsersPage> {
                           },
                         ),
                       ),
+
                       const SizedBox(width: 8),
+
                       Flexible(
                         child: DropdownButtonFormField<String>(
                           decoration: InputDecoration(
@@ -519,12 +479,14 @@ class _UsersPageState extends State<UsersPage> {
                                 borderRadius: BorderRadius.circular(6)),
                           ),
                           hint: const Text("Assign Role"),
+
                           items: ["Cashier", "Staff", "Manager"]
                               .map((val) => DropdownMenuItem(
                             value: val,
                             child: Text(val),
                           ))
                               .toList(),
+
                           onChanged: (val) {
                             setState(() {
                               selectedRole = val;
@@ -534,7 +496,9 @@ class _UsersPageState extends State<UsersPage> {
                       ),
                     ],
                   ),
+
                   const SizedBox(height: 12),
+
                   ElevatedButton.icon(
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.greenAccent.shade100,
@@ -554,7 +518,9 @@ class _UsersPageState extends State<UsersPage> {
                 ],
               ),
             ),
+
             const SizedBox(height: 20),
+
             Center(
               child: TextButton(
                 onPressed: () {
@@ -573,6 +539,7 @@ class _UsersPageState extends State<UsersPage> {
           ],
         ),
       ),
+
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
         currentIndex: _selectedIndex,

@@ -7,6 +7,8 @@ import 'package:vasenizzpos/sales/sales_screen.dart';
 class ReceiptPage extends StatefulWidget {
   final String saleId;
   final String paymentMethod;
+  final String location;
+  final String userId;
   final double subtotal;
   final double tax;
   final double discount;
@@ -17,9 +19,12 @@ class ReceiptPage extends StatefulWidget {
   final double cashGiven;
   final double change;
 
+
   const ReceiptPage({
     super.key,
     required this.saleId,
+    required this.userId,
+    required this.location,
     required this.paymentMethod,
     required this.subtotal,
     required this.tax,
@@ -289,6 +294,8 @@ class _ReceiptPageState extends State<ReceiptPage> {
             builder: (_) => SalesScreen(
               fullName: widget.fullName,
               role: widget.role,
+              userId: widget.userId,
+              location: widget.location,
             ),
           ),
               (route) => false,

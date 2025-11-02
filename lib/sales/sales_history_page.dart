@@ -6,10 +6,14 @@ import 'receipt_page.dart';
 class SalesHistoryPage extends StatefulWidget {
   final String fullName;
   final String role;
+  final String userId;
+  final String location;
 
   const SalesHistoryPage({
     super.key,
     required this.fullName,
+    required this.userId,
+    required this.location,
     required this.role,
   });
 
@@ -106,6 +110,8 @@ class _SalesHistoryPageState extends State<SalesHistoryPage> {
       context,
       MaterialPageRoute(
         builder: (context) => ReceiptPage(
+          userId: '',
+          location: '',
           saleId: sale['id'],
           paymentMethod: sale['payment_method'] ?? 'Cash',
           subtotal: sale['subtotal_amount'] ?? 0,

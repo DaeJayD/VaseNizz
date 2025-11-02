@@ -8,11 +8,15 @@ import 'package:vasenizzpos/users/users_page.dart';
 class HomeScreen extends StatefulWidget {
   final String fullName;
   final String role;
+  final String location;
+  final String userId;
   final int initialIndex;
 
   const HomeScreen({
     required this.fullName,
     required this.role,
+    required this.location,
+    required this.userId,
     this.initialIndex = 0,
     Key? key,
   }) : super(key: key);
@@ -179,6 +183,8 @@ class _HomeScreenState extends State<HomeScreen> {
         nextPage = HomeScreen(
           fullName: widget.fullName,
           role: widget.role,
+          userId: widget.userId,
+          location: widget.location,
           initialIndex: 0,
         );
         break;
@@ -186,24 +192,32 @@ class _HomeScreenState extends State<HomeScreen> {
         nextPage = SalesScreen(
           fullName: widget.fullName,
           role: widget.role,
+          userId: widget.userId,
+          location: widget.location,
         );
         break;
       case 2:
         nextPage = InventoryPage(
           fullName: widget.fullName,
           role: widget.role,
+          userId: widget.userId,
+          location: widget.location,
         );
         break;
       case 3:
         nextPage = ViewReportsPage(
           fullName: widget.fullName,
           role: widget.role,
+          userId: widget.userId,
+          location: widget.location,
         );
         break;
       case 4:
         nextPage = UsersPage(
           fullName: widget.fullName,
           role: widget.role,
+          userId: widget.userId,
+          location: widget.location,
           initialIndex: 4,
         );
         break;

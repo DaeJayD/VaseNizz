@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:vasenizzpos/services/inventory_service.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class InventoryHistoryScreen extends StatefulWidget {
   final String fullName;
   final String role;
+  final String userId;
 
   const InventoryHistoryScreen({
     Key? key,
     required this.fullName,
     required this.role,
+    required this.userId,
   }) : super(key: key);
 
   @override
@@ -16,8 +18,8 @@ class InventoryHistoryScreen extends StatefulWidget {
 }
 
 class _InventoryHistoryScreenState extends State<InventoryHistoryScreen> {
-  final InventoryService _inventoryService = InventoryService();
   final TextEditingController _searchController = TextEditingController();
+  final SupabaseClient _supabase = Supabase.instance.client;
 
   List<dynamic> _historyData = [];
   List<dynamic> _filteredData = [];
@@ -56,12 +58,14 @@ class _InventoryHistoryScreenState extends State<InventoryHistoryScreen> {
         final movementType = item['movement_type']?.toString().toLowerCase() ?? '';
         final reason = item['reason']?.toString().toLowerCase() ?? '';
         final user = item['employee_name']?.toString().toLowerCase() ?? '';
+        final sku = item['product_sku']?.toString().toLowerCase() ?? '';
         final query = _searchQuery.toLowerCase();
 
         return productName.contains(query) ||
             movementType.contains(query) ||
             reason.contains(query) ||
-            user.contains(query);
+            user.contains(query) ||
+            sku.contains(query);
       }).toList();
     }
   }
@@ -74,15 +78,55 @@ class _InventoryHistoryScreenState extends State<InventoryHistoryScreen> {
       });
     }
 
-    final result = await _inventoryService.getInventoryHistory(
-      page: _currentPage,
-      pageSize: _pageSize,
-    );
+    try {
+      final from = (loadMore ? _currentPage : 0) * _pageSize; // Fixed calculation
 
-    if (!mounted) return;
+      final data = await _supabase
+          .from('inventory_movements')
+          .select('''
+          *,
+          products:product_id (
+            name,
+            sku,
+            brands (name),
+            categories (name)
+          ),
+          employees:user_id (
+            name
+          ),
+          branches:branch_id (
+            name
+          )
+        ''')
+          .order('created_at', ascending: false)
+          .range(from, from + _pageSize - 1);
 
-    if (result['error'] == null && result['data'] != null) {
-      final newData = result['data']!;
+      if (!mounted) return;
+
+      // Transform the data to match the expected format
+      final newData = (data as List).map((movement) {
+        final product = movement['products'] ?? {};
+        final employee = movement['employees'] ?? {};
+        final branch = movement['branches'] ?? {};
+
+        return {
+          'id': movement['id'],
+          'created_at': movement['created_at'],
+          'movement_type': movement['movement_type'],
+          'quantity': movement['quantity'],
+          'previous_stock': movement['previous_stock'],
+          'new_stock': movement['new_stock'],
+          'reason': movement['reason'],
+          'product_name': product['name'] ?? 'Unknown Product',
+          'product_sku': product['sku'] ?? 'N/A',
+          'brand_name': product['brands']?['name'] ?? 'N/A',
+          'category_name': product['categories']?['name'] ?? 'N/A',
+          'employee_name': employee['name'] ?? 'Unknown User',
+          'branch_name': branch['name'] ?? 'Unknown Branch',
+          'user_id': movement['user_id'],
+          'reference_id': movement['reference_id'],
+        };
+      }).toList();
 
       setState(() {
         if (loadMore) {
@@ -95,175 +139,24 @@ class _InventoryHistoryScreenState extends State<InventoryHistoryScreen> {
         _hasMore = newData.length == _pageSize;
         _isLoading = false;
       });
-    } else {
-      // If no inventory movements exist yet, show sales data as inventory movements
-      await _loadSalesAsInventoryMovements();
-    }
-  }
-
-  Future<void> _loadSalesAsInventoryMovements() async {
-    try {
-      // Use the public method instead of accessing private _supabase
-      final result = await _inventoryService.getSalesWithProductDetails(limit: 50);
-
-      if (result['error'] == null && result['data'] != null) {
-        // Transform sales data into inventory movement format
-        final movements = [];
-        for (final item in result['data']!) {
-          final sale = item['sales'] ?? {};
-          final product = item['products'] ?? {};
-          final brand = product['brands'] ?? {};
-
-          movements.add({
-            'id': 'sale_${item['sale_id']}_${item['id']}',
-            'created_at': sale['created_at'] ?? item['created_at'],
-            'movement_type': 'sold',
-            'quantity': item['quantity'],
-            'reason': 'Sale - ${sale['payment_method'] ?? 'N/A'}',
-            'product_name': product['name'] ?? 'Unknown Product',
-            'product_sku': product['sku'] ?? 'N/A',
-            'brand_name': brand['name'] ?? 'N/A',
-            'employee_name': sale['cashier_name'] ?? 'Unknown Cashier',
-            'unit_price': item['unit_price']?.toStringAsFixed(2) ?? '0.00',
-            'total_price': item['total_price']?.toStringAsFixed(2) ?? '0.00',
-            'previous_stock': 100, // Default starting stock
-            'new_stock': 100 - (item['quantity'] ?? 0), // Calculate new stock
-          });
-        }
-
-        setState(() {
-          _historyData = movements;
-          _filterData();
-          _isLoading = false;
-        });
-      } else {
-        // Fallback if service method fails
-        _createBasicMovementsFromSales();
-      }
-
     } catch (e) {
-      // Final fallback - create basic movements from sales data
-      _createBasicMovementsFromSales();
+      if (!mounted) return;
+
+      setState(() {
+        _isLoading = false;
+      });
+
+      _showErrorSnackbar('Error loading inventory history: $e');
     }
   }
 
-  void _createBasicMovementsFromSales() {
-    final basicMovements = [
-      {
-        'id': '1',
-        'created_at': '2025-10-29T22:07:42.747Z',
-        'movement_type': 'sold',
-        'quantity': 8,
-        'reason': 'Sale - cash',
-        'product_name': 'Various Products',
-        'product_sku': 'MULTI',
-        'employee_name': 'Thofia Concepcion',
-        'previous_stock': 50,
-        'new_stock': 42,
-      },
-      {
-        'id': '2',
-        'created_at': '2025-10-29T21:12:36.459Z',
-        'movement_type': 'sold',
-        'quantity': 5,
-        'reason': 'Sale - cash (with discount)',
-        'product_name': 'Various Products',
-        'product_sku': 'MULTI',
-        'employee_name': 'Thofia Concepcion',
-        'previous_stock': 42,
-        'new_stock': 37,
-      },
-      {
-        'id': '3',
-        'created_at': '2025-10-29T20:48:46.527Z',
-        'movement_type': 'sold',
-        'quantity': 3,
-        'reason': 'Sale - cash (with discount)',
-        'product_name': 'Various Products',
-        'product_sku': 'MULTI',
-        'employee_name': 'Thofia Concepcion',
-        'previous_stock': 37,
-        'new_stock': 34,
-      },
-      {
-        'id': '4',
-        'created_at': '2025-10-29T20:41:45.962Z',
-        'movement_type': 'sold',
-        'quantity': 6,
-        'reason': 'Sale - cash',
-        'product_name': 'Various Products',
-        'product_sku': 'MULTI',
-        'employee_name': 'Thofia Concepcion',
-        'previous_stock': 34,
-        'new_stock': 28,
-      },
-      {
-        'id': '5',
-        'created_at': '2025-10-29T20:19:54.254Z',
-        'movement_type': 'sold',
-        'quantity': 4,
-        'reason': 'Sale - cash',
-        'product_name': 'Various Products',
-        'product_sku': 'MULTI',
-        'employee_name': 'Thofia Concepcion',
-        'previous_stock': 28,
-        'new_stock': 24,
-      },
-      {
-        'id': '6',
-        'created_at': '2025-10-29T19:49:59.088Z',
-        'movement_type': 'sold',
-        'quantity': 2,
-        'reason': 'Sale - cash',
-        'product_name': 'Various Products',
-        'product_sku': 'MULTI',
-        'employee_name': 'Thofia Concepcion',
-        'previous_stock': 24,
-        'new_stock': 22,
-      },
-      {
-        'id': '7',
-        'created_at': '2025-10-29T19:41:05.280Z',
-        'movement_type': 'sold',
-        'quantity': 7,
-        'reason': 'Sale - bank transfer',
-        'product_name': 'Various Products',
-        'product_sku': 'MULTI',
-        'employee_name': 'Thofia Concepcion',
-        'previous_stock': 22,
-        'new_stock': 15,
-      },
-      {
-        'id': '8',
-        'created_at': '2025-10-29T19:40:39.764Z',
-        'movement_type': 'sold',
-        'quantity': 2,
-        'reason': 'Sale - gcash',
-        'product_name': 'Various Products',
-        'product_sku': 'MULTI',
-        'employee_name': 'Thofia Concepcion',
-        'previous_stock': 15,
-        'new_stock': 13,
-      },
-      {
-        'id': '9',
-        'created_at': '2025-10-29T19:31:15.413Z',
-        'movement_type': 'sold',
-        'quantity': 8,
-        'reason': 'Sale - cash',
-        'product_name': 'Various Products',
-        'product_sku': 'MULTI',
-        'employee_name': 'Thofia Concepcion',
-        'previous_stock': 13,
-        'new_stock': 5,
-      },
-    ];
-
-    setState(() {
-      _historyData = basicMovements;
-      _filterData();
-      _isLoading = false;
-    });
+  void _showErrorSnackbar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+      ),
+    );
   }
 
   void _loadMoreData() {
@@ -302,6 +195,7 @@ class _InventoryHistoryScreenState extends State<InventoryHistoryScreen> {
       case 'out': return 'Stock Out';
       case 'sold': return 'Sold';
       case 'adjustment': return 'Adjustment';
+      case 'transfer': return 'Transfer';
       default: return type;
     }
   }
@@ -312,6 +206,7 @@ class _InventoryHistoryScreenState extends State<InventoryHistoryScreen> {
       case 'out':
       case 'sold': return Colors.red;
       case 'adjustment': return Colors.orange;
+      case 'transfer': return Colors.blue;
       default: return Colors.grey;
     }
   }
@@ -322,9 +217,42 @@ class _InventoryHistoryScreenState extends State<InventoryHistoryScreen> {
       case 'in': return '+$qty';
       case 'out':
       case 'sold': return '-$qty';
-      case 'adjustment': return '=$qty';
+      case 'adjustment':
+        return qty >= 0 ? '+$qty' : '$qty';
+      case 'transfer': return '→$qty';
       default: return qty.toString();
     }
+  }
+
+  Widget _buildStockChangeWidget(String type, int previousStock, int newStock) {
+    final change = newStock - previousStock;
+    final isPositive = change >= 0;
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          '$previousStock',
+          style: TextStyle(
+            color: Colors.grey[600],
+            fontSize: 12,
+          ),
+        ),
+        Icon(
+          isPositive ? Icons.arrow_upward : Icons.arrow_downward,
+          color: isPositive ? Colors.green : Colors.red,
+          size: 16,
+        ),
+        Text(
+          '$newStock',
+          style: TextStyle(
+            color: isPositive ? Colors.green : Colors.red,
+            fontSize: 12,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ],
+    );
   }
 
   @override
@@ -423,11 +351,11 @@ class _InventoryHistoryScreenState extends State<InventoryHistoryScreen> {
                   Icon(Icons.inventory_2_outlined, size: 64, color: Colors.grey),
                   SizedBox(height: 16),
                   Text(
-                    'No inventory history found',
+                    'No inventory movements found',
                     style: TextStyle(fontSize: 16, color: Colors.grey),
                   ),
                   Text(
-                    'Sales will appear here once integrated',
+                    'Inventory movements will appear here',
                     style: TextStyle(fontSize: 12, color: Colors.grey),
                   ),
                 ],
@@ -470,6 +398,7 @@ class _InventoryHistoryScreenState extends State<InventoryHistoryScreen> {
                             DataColumn(label: Text("Product", style: TextStyle(fontWeight: FontWeight.bold))),
                             DataColumn(label: Text("Type", style: TextStyle(fontWeight: FontWeight.bold))),
                             DataColumn(label: Text("Qty", style: TextStyle(fontWeight: FontWeight.bold))),
+                            DataColumn(label: Text("Stock Change", style: TextStyle(fontWeight: FontWeight.bold))),
                             DataColumn(label: Text("User", style: TextStyle(fontWeight: FontWeight.bold))),
                             DataColumn(label: Text("Reason", style: TextStyle(fontWeight: FontWeight.bold))),
                             DataColumn(label: Text("SKU", style: TextStyle(fontWeight: FontWeight.bold))),
@@ -478,6 +407,8 @@ class _InventoryHistoryScreenState extends State<InventoryHistoryScreen> {
                             ..._filteredData.map((item) {
                               final movementType = item['movement_type']?.toString() ?? '';
                               final quantity = item['quantity'] ?? 0;
+                              final previousStock = item['previous_stock'] ?? 0;
+                              final newStock = item['new_stock'] ?? 0;
 
                               return DataRow(
                                 cells: [
@@ -495,6 +426,7 @@ class _InventoryHistoryScreenState extends State<InventoryHistoryScreen> {
                                       fontWeight: FontWeight.bold,
                                     ),
                                   )),
+                                  DataCell(_buildStockChangeWidget(movementType, previousStock, newStock)),
                                   DataCell(Text(item['employee_name']?.toString() ?? 'N/A')),
                                   DataCell(Text(item['reason']?.toString() ?? 'N/A')),
                                   DataCell(Text(item['product_sku']?.toString() ?? 'N/A')),
@@ -520,6 +452,7 @@ class _InventoryHistoryScreenState extends State<InventoryHistoryScreen> {
                                   const DataCell(Text('')),
                                   const DataCell(Text('')),
                                   const DataCell(Text('')),
+                                  const DataCell(Text('')),
                                 ],
                               ),
                             if (_isLoading && _historyData.isNotEmpty)
@@ -528,6 +461,7 @@ class _InventoryHistoryScreenState extends State<InventoryHistoryScreen> {
                                   DataCell(
                                     const Center(child: CircularProgressIndicator(color: Colors.pink)),
                                   ),
+                                  const DataCell(Text('')),
                                   const DataCell(Text('')),
                                   const DataCell(Text('')),
                                   const DataCell(Text('')),

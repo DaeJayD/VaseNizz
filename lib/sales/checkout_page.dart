@@ -9,12 +9,16 @@ class CheckoutPage extends StatefulWidget {
   final List<Map<String, dynamic>> cartItems;
   final String? change;
   final String? cashGiven;
+  final String userId;
+  final String location;
 
   const CheckoutPage({
     Key? key,
     required this.cartItems,
     required this.role,
     required this.fullName,
+    required this.userId,
+    required this.location,
     this.cashGiven = '',
     this.change = '',
   }) : super(key: key);
@@ -189,6 +193,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
                           tax: tax,
                           discount: discount,
                           total: grandTotal,
+                          userId: widget.userId,
+                          location: widget.location,
                         ),
                       ),
                     );
@@ -297,6 +303,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
                 fullName: widget.fullName,
                 role: widget.role,
                 existingCart: cartItems,
+                userId: widget.userId,
+                location: widget.location,
               ),
             ),
                 (route) => false,

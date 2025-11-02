@@ -8,11 +8,15 @@ import 'sales_screen_content.dart';
 class SalesScreen extends StatefulWidget {
   final String fullName;
   final String role;
+  final String userId;
+  final String location;
   final int initialIndex;
 
   const SalesScreen({
     required this.fullName,
     required this.role,
+    required this.location,
+    required this.userId,
     this.initialIndex = 1,
     super.key,
   });
@@ -39,6 +43,8 @@ class _SalesScreenState extends State<SalesScreen> {
         nextPage = HomeScreen(
           fullName: widget.fullName,
           role: widget.role,
+          userId: widget.userId,
+          location: widget.location,
           initialIndex: 0,
         );
         break;
@@ -46,6 +52,8 @@ class _SalesScreenState extends State<SalesScreen> {
         nextPage = SalesScreen(
           fullName: widget.fullName,
           role: widget.role,
+          userId: widget.userId,
+          location: widget.location,
           initialIndex: 1,
         );
         break;
@@ -53,18 +61,24 @@ class _SalesScreenState extends State<SalesScreen> {
         nextPage = InventoryPage(
           fullName: widget.fullName,
           role: widget.role,
+          userId: widget.userId,
+          location: widget.location,
         );
         break;
       case 3:
         nextPage = ViewReportsPage(
           fullName: widget.fullName,
           role: widget.role,
+          userId: widget.userId,
+          location: widget.location,
         );
         break;
       case 4:
         nextPage = UsersPage(
           fullName: widget.fullName,
           role: widget.role,
+          userId: widget.userId,
+          location: widget.location,
         );
         break;
       default:
@@ -123,6 +137,8 @@ class _SalesScreenState extends State<SalesScreen> {
       body: SalesScreenContent(
         fullName: widget.fullName,
         role: widget.role,
+        userId: widget.userId,
+        location: widget.location,
       ),
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,

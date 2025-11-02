@@ -7,11 +7,15 @@ import 'checkout_page.dart';
 class MakeASale extends StatefulWidget {
   final String fullName;
   final String role;
+  final String userId;
+  final String location;
   final List<Map<String, dynamic>>? existingCart;
 
   const MakeASale({
     required this.fullName,
     required this.role,
+    required this.location,
+    required this.userId,
     this.existingCart,
     Key? key
   }) : super(key: key);
@@ -95,6 +99,8 @@ class _MakeASaleState extends State<MakeASale> {
           fullName: widget.fullName,
           role: widget.role,
           existingCart: cart,
+          userId: widget.userId,
+          location: widget.location,
         ),
       ),
     );
@@ -193,6 +199,8 @@ class _MakeASaleState extends State<MakeASale> {
                         builder: (context) => CheckoutPage(
                           cartItems: cart,
                           fullName: widget.fullName,
+                          userId: widget.userId,
+                          location: widget.location,
                           role: 'Cashier',
                         ),
                       ),
@@ -360,6 +368,8 @@ class _MakeASaleState extends State<MakeASale> {
                                   fullName: widget.fullName,
                                   role: 'Cashier',
                                   existingCart: cart,
+                                  userId: widget.userId,
+                                  location: widget.location,
                                 ),
                               ),
                             );

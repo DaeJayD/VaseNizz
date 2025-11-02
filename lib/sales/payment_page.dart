@@ -12,6 +12,8 @@ class PaymentPage extends StatefulWidget {
   final double total;
   final String change;
   final String cashGiven;
+  final String userId;
+  final String location;
 
   const PaymentPage({
     super.key,
@@ -24,6 +26,8 @@ class PaymentPage extends StatefulWidget {
     required this.tax,
     required this.discount,
     required this.total,
+    required this.userId,
+    required this.location,
   });
 
   @override
@@ -88,11 +92,23 @@ class _PaymentPageState extends State<PaymentPage> {
 
       await Supabase.instance.client.from('sale_items').insert(saleItems);
 
+      // Update branch stock for each item
       for (final item in widget.cartItems) {
+        // Get the current stock from branch_stock
+        final stockResponse = await Supabase.instance.client
+            .from('branch_stock')
+            .select('current_stock, id')
+            .eq('product_id', item['id'])
+            .single();
+
+        final currentStock = stockResponse['current_stock'] as int;
+        final branchStockId = stockResponse['id'];
+
+        // Update branch_stock with new quantity
         await Supabase.instance.client
-            .from('products')
-            .update({'stock': item['stock'] - item['cart_quantity']})
-            .eq('id', item['id']);
+            .from('branch_stock')
+            .update({'current_stock': currentStock - item['cart_quantity']})
+            .eq('id', branchStockId);
       }
 
       Navigator.pop(context);
@@ -112,6 +128,8 @@ class _PaymentPageState extends State<PaymentPage> {
             role: widget.role,
             cashGiven: _cashGiven,
             change: _change,
+            userId: widget.userId,
+            location: widget.location,
           ),
         ),
             (route) => false,

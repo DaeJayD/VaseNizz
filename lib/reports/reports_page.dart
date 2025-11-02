@@ -10,11 +10,15 @@ import 'logs.dart';
 class ViewReportsPage extends StatefulWidget {
   final String fullName;
   final String role;
+  final String userId;
+  final String location;
   final int initialIndex;
 
   const ViewReportsPage({
     required this.fullName,
     required this.role,
+    required this.userId,
+    required this.location,
     this.initialIndex = 3,
     super.key,
   });
@@ -63,6 +67,8 @@ class _ViewReportsPageState extends State<ViewReportsPage> {
         target = HomeScreen(
           fullName: widget.fullName,
           role: widget.role,
+          userId: widget.userId,
+          location: widget.location,
           initialIndex: 0,
         );
         break;
@@ -70,30 +76,40 @@ class _ViewReportsPageState extends State<ViewReportsPage> {
         target = SalesScreen(
           fullName: widget.fullName,
           role: widget.role,
+          userId: widget.userId,
+          location: widget.location,
         );
         break;
       case 2:
         target = InventoryPage(
           fullName: widget.fullName,
           role: widget.role,
+          userId: widget.userId,
+          location: widget.location,
         );
         break;
       case 3:
         target = ViewReportsPage(
           fullName: widget.fullName,
           role: widget.role,
+          userId: widget.userId,
+          location: widget.location,
         );
         break;
       case 4:
         target = UsersPage(
           fullName: widget.fullName,
           role: widget.role,
+          userId: widget.userId,
+          location: widget.location,
         );
         break;
       default:
         target = ViewReportsPage(
           fullName: widget.fullName,
           role: widget.role,
+          userId: widget.userId,
+          location: widget.location,
         );
     }
 

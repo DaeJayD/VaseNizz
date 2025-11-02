@@ -7,11 +7,13 @@ class EmployeeHomeScreen extends StatefulWidget {
   final String fullName;
   final String userId;
   final String role;
+  final String location;
 
   const EmployeeHomeScreen({
     required this.fullName,
     required this.userId,
     required this.role,
+    required this.location,
     Key? key,
   }) : super(key: key);
 
@@ -28,8 +30,10 @@ class _EmployeeHomeScreenState extends State<EmployeeHomeScreen> {
   void initState() {
     super.initState();
     _pages = [
-      SalesScreen(fullName: widget.fullName, role: widget.role),
-      InventoryPage(fullName: widget.fullName, role: widget.role),
+      SalesScreen(fullName: widget.fullName, role: widget.role, userId: widget.userId,
+        location: widget.location,),
+      InventoryPage(fullName: widget.fullName, role: widget.role, userId: widget.userId,
+        location: widget.location,),
       UserProfileScreen(userId: widget.userId, fullName: widget.fullName, role: widget.role),
     ];
   }

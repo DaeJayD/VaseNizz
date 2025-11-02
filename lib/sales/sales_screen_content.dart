@@ -7,10 +7,14 @@ import 'sales_history_page.dart';
 class SalesScreenContent extends StatefulWidget {
   final String fullName;
   final String role;
+  final String userId;
+  final String location;
 
   const SalesScreenContent({
     required this.fullName,
     required this.role,
+    required this.userId,
+    required this.location,
     super.key,
   });
 
@@ -152,6 +156,8 @@ class _SalesScreenContentState extends State<SalesScreenContent> {
                   builder: (context) => SalesHistoryPage(
                     fullName: widget.fullName,
                     role: widget.role,
+                    userId: widget.userId,
+                    location: widget.location,
                   ),
                 ),
               );
@@ -320,6 +326,8 @@ class _SalesScreenContentState extends State<SalesScreenContent> {
                         builder: (context) => MakeASale(
                           fullName: widget.fullName,
                           role: widget.role,
+                          userId: widget.userId,
+                          location: widget.location,
                         ),
                       ),
                     );
@@ -375,6 +383,8 @@ class _SalesScreenContentState extends State<SalesScreenContent> {
                         builder: (context) => SalesHistoryPage(
                           fullName: widget.fullName,
                           role: widget.role,
+                          userId: widget.userId,
+                          location: widget.location,
                         ),
                       ),
                     );

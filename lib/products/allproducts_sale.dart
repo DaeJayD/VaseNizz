@@ -5,12 +5,16 @@ import 'package:vasenizzpos/sales/checkout_page.dart';
 class AllProductsPage extends StatefulWidget {
   final String fullName;
   final String role;
+  final String userId;
+  final String location;
   final List<Map<String, dynamic>>? existingCart;
 
   const AllProductsPage({
     Key? key,
     required this.fullName,
     required this.role,
+    required this.userId,
+    required this.location,
     this.existingCart,
   }) : super(key: key);
 
@@ -60,30 +64,77 @@ class _AllProductsPageState extends State<AllProductsPage> {
       final from = _currentPage * _pageSize;
       final to = from + _pageSize - 1;
 
-      // Simple query for all products
+      // Get products with branch stock information
       final response = await Supabase.instance.client
-          .from('products')
+          .from('branch_brands')
           .select('''
-            *,
-            categories(name),
-            brands(name)
-          ''')
+          brands:brand_id(
+            id,
+            name,
+            description,
+            products(
+              id,
+              name,
+              price,
+              sku,
+              categories(name),
+              brands(name),
+              branch_stock(
+                current_stock
+              )
+            )
+          )
+        ''')
           .range(from, to);
 
-      List<Map<String, dynamic>> products = List<Map<String, dynamic>>.from(response);
+      // Extract and flatten products from all brands
+      List<Map<String, dynamic>> products = [];
+      for (final branchBrand in response) {
+        final brand = branchBrand['brands'];
+        if (brand != null && brand['products'] != null) {
+          final brandProducts = List<Map<String, dynamic>>.from(brand['products']);
+          for (final product in brandProducts) {
+            // Add stock from branch_stock or default to 0
+            final branchStock = product['branch_stock'] as List?;
+            final stock = branchStock != null && branchStock.isNotEmpty
+                ? (branchStock[0]['current_stock'] ?? 0)
+                : 0;
+
+            products.add({
+              ...product,
+              'stock': stock,
+            });
+          }
+        }
+      }
+
+      // Remove duplicates by product ID
+      final uniqueProducts = <String, Map<String, dynamic>>{};
+      for (final product in products) {
+        final productId = product['id']?.toString();
+        if (productId != null && !uniqueProducts.containsKey(productId)) {
+          uniqueProducts[productId] = product;
+        }
+      }
+
+      List<Map<String, dynamic>> finalProducts = uniqueProducts.values.toList();
 
       // Apply client-side sorting
       if (_sortBy == 'name') {
-        products.sort((a, b) => (a['name'] ?? '').compareTo(b['name'] ?? ''));
+        finalProducts.sort((a, b) => (a['name']?.toString() ?? '').compareTo(b['name']?.toString() ?? ''));
       } else if (_sortBy == 'stock') {
-        products.sort((a, b) => (b['stock'] ?? 0).compareTo(a['stock'] ?? 0));
+        finalProducts.sort((a, b) {
+          final stockA = a['stock'] is int ? a['stock'] : int.tryParse(a['stock']?.toString() ?? '0') ?? 0;
+          final stockB = b['stock'] is int ? b['stock'] : int.tryParse(b['stock']?.toString() ?? '0') ?? 0;
+          return stockB.compareTo(stockA);
+        });
       }
 
       setState(() {
         if (loadMore) {
-          _products.addAll(products);
+          _products.addAll(finalProducts);
         } else {
-          _products = products;
+          _products = finalProducts;
         }
 
         _filteredProducts = _products;
@@ -127,7 +178,9 @@ class _AllProductsPageState extends State<AllProductsPage> {
   }
 
   void addToCart(Map<String, dynamic> product) {
-    if (product['stock'] <= 0) {
+    final productStock = product['stock'] is int ? product['stock'] : int.tryParse(product['stock']?.toString() ?? '0') ?? 0;
+
+    if (productStock <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('${product['name']} is out of stock')),
       );
@@ -140,7 +193,7 @@ class _AllProductsPageState extends State<AllProductsPage> {
     );
 
     final currentCartQty = (existingItem['cart_quantity'] as int?) ?? 0;
-    if (currentCartQty >= product['stock']) {
+    if (currentCartQty >= productStock) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Cannot add more than available stock')),
       );
@@ -181,6 +234,8 @@ class _AllProductsPageState extends State<AllProductsPage> {
       context,
       MaterialPageRoute(
         builder: (context) => CheckoutPage(
+          userId: widget.userId,
+          location: widget.location,
           cartItems: cart,
           fullName: widget.fullName,
           role: widget.role,
@@ -400,6 +455,7 @@ class _AllProductsPageState extends State<AllProductsPage> {
                 final cartQuantity = inCart
                     ? (cart.firstWhere((item) => item['id'] == product['id'])['cart_quantity'] as int)
                     : 0;
+                final productStock = product['stock'] is int ? product['stock'] : int.tryParse(product['stock']?.toString() ?? '0') ?? 0;
 
                 return Card(
                   shape: RoundedRectangleBorder(
@@ -464,10 +520,10 @@ class _AllProductsPageState extends State<AllProductsPage> {
                         ),
 
                         Text(
-                          'Stock: ${product['stock'] ?? 0}',
+                          'Stock: $productStock',
                           style: TextStyle(
                             fontSize: 10,
-                            color: product['stock'] > 0 ? Colors.grey[600] : Colors.red,
+                            color: productStock > 0 ? Colors.grey[600] : Colors.red,
                           ),
                         ),
 
@@ -483,9 +539,9 @@ class _AllProductsPageState extends State<AllProductsPage> {
                             IconButton(
                               icon: Icon(
                                 Icons.add_circle_outline,
-                                color: product['stock'] > 0 ? Colors.pink : Colors.grey,
+                                color: productStock > 0 ? Colors.pink : Colors.grey,
                               ),
-                              onPressed: product['stock'] > 0
+                              onPressed: productStock > 0
                                   ? () => addToCart(product)
                                   : null,
                             ),

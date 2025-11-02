@@ -66,6 +66,7 @@ class _LoginScreenState extends State<LoginScreen> {
         final role = user['role']?.toString().toLowerCase() ?? '';
         final fullName = user['name'] ?? '';
         final userId = user['user_id'];
+        final location = '';
 
         if (role == 'cashier') {
           Navigator.pushReplacement(
@@ -75,6 +76,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 fullName: fullName,
                 role: role,
                 userId: userId,
+                location: location,
               ),
             ),
           );
@@ -85,6 +87,8 @@ class _LoginScreenState extends State<LoginScreen> {
               builder: (_) => HomeScreen(
                 fullName: fullName,
                 role: role,
+                userId: userId,
+                location: location,
               ),
             ),
           );
