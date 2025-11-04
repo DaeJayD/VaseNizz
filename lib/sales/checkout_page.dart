@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:vasenizzpos/products/brand_products_page.dart';
+import 'package:vasenizzpos/employees/employee_make_sale.dart';
 import 'payment_page.dart';
 import 'make_a_sale.dart';
 
@@ -120,6 +120,45 @@ class _CheckoutPageState extends State<CheckoutPage> {
     }
   }
 
+  void _navigateBackToBrandProducts() {
+    Navigator.of(context).pop(cartItems);
+  }
+
+
+  void _navigateBackToProducts() {
+    if (widget.role.toLowerCase() == 'cashier') {
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => EmployeeMakeASale(
+            fullName: widget.fullName,
+            role: widget.role,
+            userId: widget.userId,
+            location: widget.location,
+            existingCart: cartItems,
+          ),
+        ),
+
+      );
+    } else {
+      // For other roles (owners, managers), return to MakeASale
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(
+          builder: (context) => MakeASale(
+            fullName: widget.fullName,
+            role: widget.role,
+            existingCart: cartItems,
+            userId: widget.userId,
+            location: widget.location,
+          ),
+        ),
+            (route) => false,
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -130,7 +169,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
         toolbarHeight: 65,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
-          onPressed: () => Navigator.pop(context),
+          onPressed: _navigateBackToBrandProducts,
         ),
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -184,8 +223,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
                       context,
                       MaterialPageRoute(
                         builder: (_) => PaymentPage(
-                          cashGiven: 'cashGiven',
-                          change: '',
                           fullName: widget.fullName,
                           role: widget.role,
                           cartItems: cartItems,
@@ -295,21 +332,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
       child: ElevatedButton.icon(
-        onPressed: () {
-          Navigator.pushAndRemoveUntil(
-            context,
-            MaterialPageRoute(
-              builder: (context) => MakeASale(
-                fullName: widget.fullName,
-                role: widget.role,
-                existingCart: cartItems,
-                userId: widget.userId,
-                location: widget.location,
-              ),
-            ),
-                (route) => false,
-          );
-        },
+        onPressed: _navigateBackToProducts,
         icon: const Icon(Icons.add, color: Colors.white),
         label: const Text(
           "ADD NEW ITEM",

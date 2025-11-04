@@ -112,40 +112,6 @@ class _MakeASaleState extends State<MakeASale> {
     });
   }
 
-  void _completeSale() {
-    if (cart.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("No items in the sale")),
-      );
-      return;
-    }
-
-    double total = cart.fold(0, (sum, item) => sum + item['price']);
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text("Complete Sale"),
-        content: Text("Total amount: ₱${total.toStringAsFixed(2)}"),
-        actions: [
-          TextButton(
-            onPressed: () {
-              setState(() => cart.clear());
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text("Sale completed!")),
-              );
-            },
-            child: const Text("Confirm"),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Cancel"),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(

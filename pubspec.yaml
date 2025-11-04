@@ -27,3 +27,5 @@ flutter:
 
   assets:
     - assets/logo.png
+    - assets/flower.png
+    

@@ -42,9 +42,11 @@ class _SalesHistoryPageState extends State<SalesHistoryPage> {
         _hasError = false;
       });
 
+      // Get branch-specific sales history
       final response = await Supabase.instance.client
           .from('sales')
           .select('*')
+          .eq('branch_location', widget.location) // Add this line
           .order('created_at', ascending: false);
 
       setState(() {

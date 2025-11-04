@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:vasenizzpos/employees/employee_homescreen.dart';
 import 'package:vasenizzpos/sales/sales_screen.dart';
 
 class ReceiptPage extends StatefulWidget {
@@ -18,7 +18,6 @@ class ReceiptPage extends StatefulWidget {
   final String role;
   final double cashGiven;
   final double change;
-
 
   const ReceiptPage({
     super.key,
@@ -50,7 +49,9 @@ class _ReceiptPageState extends State<ReceiptPage> {
     super.initState();
     formattedDate = DateFormat("MM/dd/yyyy • hh:mm a").format(DateTime.now());
     Future.delayed(const Duration(milliseconds: 400), () {
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     });
   }
 
@@ -81,6 +82,35 @@ class _ReceiptPageState extends State<ReceiptPage> {
     );
   }
 
+  void _navigateBasedOnRole() {
+
+    if (widget.role.toLowerCase() == 'cashier') {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => EmployeeHomeScreen(
+            fullName: widget.fullName,
+            role: widget.role,
+            userId: widget.userId,
+            location: widget.location,
+          ),
+        ),
+      );
+    } else {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => SalesScreen(
+            fullName: widget.fullName,
+            role: widget.role,
+            userId: widget.userId,
+            location: widget.location,
+          ),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -97,7 +127,7 @@ class _ReceiptPageState extends State<ReceiptPage> {
               const SizedBox(height: 18),
               _buildReceiptCard(),
               const SizedBox(height: 24),
-              _buildProceedButton(context),
+              _buildProceedButton(),
             ],
           ),
         ),
@@ -285,22 +315,9 @@ class _ReceiptPageState extends State<ReceiptPage> {
     );
   }
 
-  Widget _buildProceedButton(BuildContext context) {
+  Widget _buildProceedButton() {
     return ElevatedButton(
-      onPressed: () {
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(
-            builder: (_) => SalesScreen(
-              fullName: widget.fullName,
-              role: widget.role,
-              userId: widget.userId,
-              location: widget.location,
-            ),
-          ),
-              (route) => false,
-        );
-      },
+      onPressed: _navigateBasedOnRole,
       style: ElevatedButton.styleFrom(
         backgroundColor: Colors.green,
         padding: const EdgeInsets.symmetric(horizontal: 90, vertical: 16),

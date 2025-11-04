@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:vasenizzpos/dashboard/home_screen.dart';
-import 'package:vasenizzpos/dashboard/employee_homescreen.dart';
+import 'package:vasenizzpos/employees/employee_homescreen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -126,15 +126,15 @@ class _LoginScreenState extends State<LoginScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              const SizedBox(height: 40),
+              const SizedBox(height: 5),
               const CircleAvatar(
-                radius: 60,
+                radius: 45,
                 backgroundImage: AssetImage('assets/logo.png'),
                 backgroundColor: Colors.white,
               ),
-              const SizedBox(height: 20),
-              Image.asset('assets/flower.png', height: 160),
-              const SizedBox(height: 40),
+              const SizedBox(height: 5),
+              Image.asset('assets/flower.png', height: 360),
+              const SizedBox(height: 5),
               Align(
                 alignment: Alignment.centerLeft,
                 child: const Text(

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:vasenizzpos/dashboard/home_screen.dart';
 import 'package:vasenizzpos/main.dart';
-import 'emp_profile.dart';
+import '../employees/emp_profile.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:vasenizzpos/sales/sales_screen.dart';
 import 'package:vasenizzpos/inventory/inventory_screen.dart';

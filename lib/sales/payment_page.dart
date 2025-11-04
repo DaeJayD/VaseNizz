@@ -10,15 +10,11 @@ class PaymentPage extends StatefulWidget {
   final double tax;
   final double discount;
   final double total;
-  final String change;
-  final String cashGiven;
   final String userId;
   final String location;
 
   const PaymentPage({
     super.key,
-    required this.cashGiven,
-    required this.change,
     required this.fullName,
     required this.role,
     required this.cartItems,
@@ -46,16 +42,33 @@ class _PaymentPageState extends State<PaymentPage> {
     });
   }
 
+  void _quickFillCash() {
+    _cashController.text = widget.total.toStringAsFixed(2);
+    _calculateChange();
+  }
+
   Future<void> _processPayment(BuildContext context, String paymentMethod) async {
     try {
-      if (paymentMethod == "Cash" && _cashGiven < widget.total) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Insufficient cash given!"),
-            backgroundColor: Colors.red,
-          ),
-        );
-        return;
+      // For cash payments, validate cash given
+      if (paymentMethod == "Cash") {
+        if (_cashGiven <= 0) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Please enter cash amount!"),
+              backgroundColor: Colors.red,
+            ),
+          );
+          return;
+        }
+        if (_cashGiven < widget.total) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Insufficient cash given!"),
+              backgroundColor: Colors.red,
+            ),
+          );
+          return;
+        }
       }
 
       showDialog(
@@ -64,6 +77,7 @@ class _PaymentPageState extends State<PaymentPage> {
         builder: (_) => const Center(child: CircularProgressIndicator()),
       );
 
+      // Process payment
       final saleResponse = await Supabase.instance.client
           .from('sales')
           .insert({
@@ -78,40 +92,62 @@ class _PaymentPageState extends State<PaymentPage> {
         'cashier_role': widget.role,
         'cash_given': _cashGiven,
         'change': _change,
+        'branch_location': widget.location,
       }).select().single();
 
       final saleId = saleResponse['id'];
 
-      final saleItems = widget.cartItems.map((item) => {
-        'sale_id': saleId,
-        'product_id': item['id'],
-        'quantity': item['cart_quantity'],
-        'unit_price': item['price'],
-        'total_price': item['price'] * item['cart_quantity'],
+      // Check if saleId is null
+      if (saleId == null) {
+        throw Exception('Failed to create sale record');
+      }
+
+      // Create sale items with null safety
+      final saleItems = widget.cartItems.map((item) {
+        final price = (item['price'] as num?)?.toDouble() ?? 0.0;
+        final quantity = (item['cart_quantity'] as num?)?.toInt() ?? 0;
+
+        return {
+          'sale_id': saleId,
+          'product_id': item['id'],
+          'quantity': quantity,
+          'unit_price': price,
+          'total_price': price * quantity,
+        };
       }).toList();
 
       await Supabase.instance.client.from('sale_items').insert(saleItems);
 
-      // Update branch stock for each item
+      // Update branch stock for each item with null safety
       for (final item in widget.cartItems) {
-        // Get the current stock from branch_stock
-        final stockResponse = await Supabase.instance.client
-            .from('branch_stock')
-            .select('current_stock, id')
-            .eq('product_id', item['id'])
-            .single();
+        final productId = item['id'];
+        final quantity = (item['cart_quantity'] as num?)?.toInt() ?? 0;
 
-        final currentStock = stockResponse['current_stock'] as int;
-        final branchStockId = stockResponse['id'];
+        if (productId == null) continue;
 
-        // Update branch_stock with new quantity
-        await Supabase.instance.client
-            .from('branch_stock')
-            .update({'current_stock': currentStock - item['cart_quantity']})
-            .eq('id', branchStockId);
+        try {
+          final stockResponse = await Supabase.instance.client
+              .from('branch_stock')
+              .select('current_stock, id')
+              .eq('product_id', productId)
+              .single();
+
+          final currentStock = (stockResponse['current_stock'] as num?)?.toInt() ?? 0;
+          final branchStockId = stockResponse['id'];
+
+          if (branchStockId != null) {
+            await Supabase.instance.client
+                .from('branch_stock')
+                .update({'current_stock': currentStock - quantity})
+                .eq('id', branchStockId);
+          }
+        } catch (e) {
+          print('Error updating stock for product $productId: $e');
+          // Continue with other items even if one fails
+        }
       }
 
-      Navigator.pop(context);
+      Navigator.pop(context); // Close loading dialog
 
       Navigator.pushAndRemoveUntil(
         context,
@@ -135,10 +171,10 @@ class _PaymentPageState extends State<PaymentPage> {
             (route) => false,
       );
     } catch (e) {
-      Navigator.pop(context);
+      Navigator.pop(context); // Close loading dialog
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Payment failed: $e'),
+          content: Text('Payment failed: ${e.toString()}'),
           backgroundColor: Colors.red,
         ),
       );
@@ -203,6 +239,12 @@ class _PaymentPageState extends State<PaymentPage> {
   }
 
   @override
+  void dispose() {
+    _cashController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final totalText = "₱${widget.total.toStringAsFixed(2)}";
     return Scaffold(
@@ -244,27 +286,87 @@ class _PaymentPageState extends State<PaymentPage> {
                   _buildSummaryRow("Total", totalText,
                       isBold: true, color: Colors.pinkAccent),
                   const SizedBox(height: 16),
-                  TextField(
-                    controller: _cashController,
-                    keyboardType: TextInputType.number,
-                    decoration: InputDecoration(
-                      labelText: "Cash Given",
-                      prefixIcon: const Icon(Icons.money, color: Colors.pinkAccent),
-                      filled: true,
-                      fillColor: Colors.grey[100],
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
+
+                  // Cash Input Section
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _cashController,
+                          keyboardType: TextInputType.numberWithOptions(decimal: true),
+                          decoration: InputDecoration(
+                            labelText: "Cash Given",
+                            prefixIcon: const Icon(Icons.money, color: Colors.pinkAccent),
+                            suffixIcon: IconButton(
+                              icon: const Icon(Icons.attach_money, color: Colors.green),
+                              onPressed: _quickFillCash,
+                              tooltip: "Fill with total amount",
+                            ),
+                            filled: true,
+                            fillColor: Colors.grey[100],
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            hintText: "0.00",
+                          ),
+                          onChanged: (_) => _calculateChange(),
+                        ),
                       ),
-                    ),
-                    onChanged: (_) => _calculateChange(),
+                      const SizedBox(width: 10),
+                      ElevatedButton(
+                        onPressed: _quickFillCash,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                        ),
+                        child: const Text(
+                          "EXACT",
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 8),
-                  Text(
-                    "Change: ${_change >= 0 ? '₱${_change.toStringAsFixed(2)}' : '₱0.00'}",
-                    style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.pinkAccent),
+
+                  // Change Display
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: _change >= 0 ? Colors.green[50] : Colors.red[50],
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: _change >= 0 ? Colors.green : Colors.red,
+                        width: 1,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          "Change:",
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: _change >= 0 ? Colors.green[800] : Colors.red[800],
+                          ),
+                        ),
+                        Text(
+                          _change >= 0 ? '₱${_change.toStringAsFixed(2)}' : '-₱${_change.abs().toStringAsFixed(2)}',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: _change >= 0 ? Colors.green[800] : Colors.red[800],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
