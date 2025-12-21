@@ -38,6 +38,14 @@ class _BrandInventoryPageState extends State<BrandInventoryPage> {
   final TextEditingController _searchController = TextEditingController();
   List<dynamic> _filteredProducts = [];
 
+  // Filter and Sort variables
+  String _selectedFilter = 'All';
+  String _selectedSort = 'Name A-Z';
+  String _selectedCategory = 'All Categories';
+  List<String> _filterOptions = ['All', 'Low Stock', 'Out of Stock'];
+  final List<String> _sortOptions = ['Name A-Z', 'Name Z-A', 'Price Low-High', 'Price High-Low', 'Stock Low-High'];
+  List<String> _categoryOptions = ['All Categories'];
+
   @override
   void initState() {
     super.initState();
@@ -72,6 +80,7 @@ class _BrandInventoryPageState extends State<BrandInventoryPage> {
       _branchId = branchResult['id'];
 
       await _loadProducts();
+      await _loadCategories();
     } catch (e) {
       print('Error initializing data: $e');
       _showErrorSnackbar('Failed to load inventory data');
@@ -101,7 +110,7 @@ class _BrandInventoryPageState extends State<BrandInventoryPage> {
 
       setState(() {
         _products = result;
-        _filteredProducts = result;
+        _applyFilterAndSort();
       });
     } catch (e) {
       print('Error loading products: $e');
@@ -109,22 +118,258 @@ class _BrandInventoryPageState extends State<BrandInventoryPage> {
     }
   }
 
+  Future<void> _loadCategories() async {
+    try {
+      // Load unique categories for this brand
+      final result = await _supabase
+          .from('products')
+          .select('categories(name)')
+          .eq('brand_id', _brandId!);
+
+      // Extract unique category names
+      final categoryNames = result
+          .map((item) => item['categories']?['name']?.toString())
+          .where((name) => name != null && name.isNotEmpty)
+          .toSet()
+          .toList();
+
+      setState(() {
+        _categoryOptions = ['All Categories']..addAll(categoryNames.cast<String>());
+      });
+    } catch (e) {
+      print('Error loading categories: $e');
+    }
+  }
+
   void _filterProducts() {
-    final query = _searchController.text.toLowerCase();
-    setState(() {
-      if (query.isEmpty) {
-        _filteredProducts = _products;
-      } else {
-        _filteredProducts = _products.where((product) {
-          final productName = product['name']?.toString().toLowerCase() ?? '';
-          final productSku = product['sku']?.toString().toLowerCase() ?? '';
-          final categoryName = product['categories']?['name']?.toString().toLowerCase() ?? '';
-          return productName.contains(query) ||
-              productSku.contains(query) ||
-              categoryName.contains(query);
-        }).toList();
+    _applyFilterAndSort();
+  }
+
+  void _applyFilterAndSort() {
+    String query = _searchController.text.toLowerCase();
+
+    // Apply search filter
+    List<dynamic> filtered = _products.where((product) {
+      final productName = product['name']?.toString().toLowerCase() ?? '';
+      final productSku = product['sku']?.toString().toLowerCase() ?? '';
+      final categoryName = product['categories']?['name']?.toString().toLowerCase() ?? '';
+      return productName.contains(query) ||
+          productSku.contains(query) ||
+          categoryName.contains(query);
+    }).toList();
+
+    // Apply category filter
+    if (_selectedCategory != 'All Categories') {
+      filtered = filtered.where((product) {
+        final categoryName = product['categories']?['name']?.toString() ?? '';
+        return categoryName == _selectedCategory;
+      }).toList();
+    }
+
+    // Apply stock filter
+    if (_selectedFilter == 'Low Stock') {
+      filtered = filtered.where((product) {
+        final currentStock = product['branch_stock'][0]['current_stock'] ?? 0;
+        final lowStockThreshold = product['branch_stock'][0]['low_stock_threshold'] ?? 10;
+        return currentStock > 0 && currentStock <= lowStockThreshold;
+      }).toList();
+    } else if (_selectedFilter == 'Out of Stock') {
+      filtered = filtered.where((product) {
+        final currentStock = product['branch_stock'][0]['current_stock'] ?? 0;
+        return currentStock == 0;
+      }).toList();
+    }
+
+    // Apply sorting
+    filtered.sort((a, b) {
+      switch (_selectedSort) {
+        case 'Name Z-A':
+          return (b['name'] ?? '').compareTo(a['name'] ?? '');
+        case 'Price Low-High':
+          return ((a['price'] ?? 0) as num).compareTo((b['price'] ?? 0) as num);
+        case 'Price High-Low':
+          return ((b['price'] ?? 0) as num).compareTo((a['price'] ?? 0) as num);
+        case 'Stock Low-High':
+          final stockA = a['branch_stock'][0]['current_stock'] ?? 0;
+          final stockB = b['branch_stock'][0]['current_stock'] ?? 0;
+          return stockA.compareTo(stockB);
+        default: // 'Name A-Z'
+          return (a['name'] ?? '').compareTo(b['name'] ?? '');
       }
     });
+
+    setState(() {
+      _filteredProducts = filtered;
+    });
+  }
+
+  void _showFilterDialog() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text("Filter by Stock"),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: _filterOptions.length,
+              itemBuilder: (context, index) {
+                final option = _filterOptions[index];
+                return RadioListTile<String>(
+                  title: Text(option),
+                  value: option,
+                  groupValue: _selectedFilter,
+                  onChanged: (value) {
+                    setState(() {
+                      _selectedFilter = value!;
+                    });
+                    Navigator.pop(context);
+                    _applyFilterAndSort();
+                  },
+                );
+              },
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showCategoryDialog() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text("Filter by Category"),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: _categoryOptions.length,
+              itemBuilder: (context, index) {
+                final option = _categoryOptions[index];
+                return RadioListTile<String>(
+                  title: Text(option),
+                  value: option,
+                  groupValue: _selectedCategory,
+                  onChanged: (value) {
+                    setState(() {
+                      _selectedCategory = value!;
+                    });
+                    Navigator.pop(context);
+                    _applyFilterAndSort();
+                  },
+                );
+              },
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showSortDialog() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text("Sort Products"),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: _sortOptions.length,
+              itemBuilder: (context, index) {
+                final option = _sortOptions[index];
+                return RadioListTile<String>(
+                  title: Text(option),
+                  value: option,
+                  groupValue: _selectedSort,
+                  onChanged: (value) {
+                    setState(() {
+                      _selectedSort = value!;
+                    });
+                    Navigator.pop(context);
+                    _applyFilterAndSort();
+                  },
+                );
+              },
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showProductDetails(dynamic product) {
+    final branchStock = product['branch_stock'][0];
+    final currentStock = branchStock['current_stock'] ?? 0;
+    final lowStockThreshold = branchStock['low_stock_threshold'] ?? 10;
+    final isOutOfStock = currentStock == 0;
+    final isLowStock = currentStock > 0 && currentStock <= lowStockThreshold;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text(product['name'] ?? 'Product Details'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (product['sku'] != null) ...[
+                Text(
+                  'SKU: ${product['sku']}',
+                  style: const TextStyle(fontSize: 14, color: Colors.grey),
+                ),
+                const SizedBox(height: 8),
+              ],
+              Text(
+                'Category: ${product['categories']?['name'] ?? '—'}',
+                style: const TextStyle(fontSize: 14),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Price: ₱${(product['price'] ?? 0).toStringAsFixed(2)}',
+                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Text(
+                    'Stock: $currentStock',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: isOutOfStock ? Colors.red : (isLowStock ? Colors.orange : Colors.green),
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  if (isOutOfStock)
+                    const Icon(Icons.error_outline, color: Colors.red, size: 16)
+                  else if (isLowStock)
+                    const Icon(Icons.warning_amber, color: Colors.orange, size: 16),
+                ],
+              ),
+              if (isLowStock) ...[
+                const SizedBox(height: 4),
+                Text(
+                  'Low stock threshold: $lowStockThreshold',
+                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                ),
+              ],
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Close"),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   void _showErrorSnackbar(String message) {
@@ -228,93 +473,188 @@ class _BrandInventoryPageState extends State<BrandInventoryPage> {
     );
   }
 
-  void _addStock(int index) async {
+  void _showAddStockDialog(int index) {
+    final TextEditingController qtyController = TextEditingController();
     final product = _filteredProducts[index];
     final currentStock = product['branch_stock'][0]['current_stock'] ?? 0;
 
-    try {
-      // Update stock in database
-      await _supabase
-          .from('branch_stock')
-          .update({
-        'current_stock': currentStock + 1,
-        'last_updated': DateTime.now().toIso8601String(),
-      })
-          .eq('product_id', product['id'])
-          .eq('branch_id', _branchId!);
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text("Add Stock to ${product['name']}"),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text("Current stock: $currentStock"),
+              const SizedBox(height: 10),
+              TextField(
+                controller: qtyController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: "Quantity to add",
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Cancel"),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+              onPressed: () async {
+                final int addQty = int.tryParse(qtyController.text) ?? 0;
+                if (addQty > 0) {
+                  try {
+                    // Update stock in database
+                    await _supabase
+                        .from('branch_stock')
+                        .update({
+                      'current_stock': currentStock + addQty,
+                      'last_updated': DateTime.now().toIso8601String(),
+                    })
+                        .eq('product_id', product['id'])
+                        .eq('branch_id', _branchId!);
 
-      // Record inventory movement
-      await _supabase
-          .from('inventory_movements')
-          .insert({
-        'product_id': product['id'],
-        'branch_id': _branchId!,
-        'movement_type': 'in',
-        'quantity': 1,
-        'previous_stock': currentStock,
-        'new_stock': currentStock + 1,
-        'user_id': widget.userId,
-        'username': widget.fullName,
-        'reason': 'Manual stock adjustment',
-      });
+                    // Record inventory movement
+                    await _supabase
+                        .from('inventory_movements')
+                        .insert({
+                      'product_id': product['id'],
+                      'branch_id': _branchId!,
+                      'movement_type': 'in',
+                      'quantity': addQty,
+                      'previous_stock': currentStock,
+                      'new_stock': currentStock + addQty,
+                      'user_id': widget.userId,
+                      'username': widget.fullName,
+                      'reason': 'Manual stock adjustment',
+                    });
 
-      await _loadProducts(); // Refresh data
+                    await _loadProducts(); // Refresh data
+                    Navigator.pop(context);
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Added 1 to ${product['name']}'),
-          backgroundColor: Colors.green,
-        ),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error updating stock: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Added $addQty to ${product['name']}'),
+                        backgroundColor: Colors.green,
+                      ),
+                    );
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Error updating stock: $e'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("Please enter a valid quantity")),
+                  );
+                }
+              },
+              child: const Text("Add Stock"),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   Widget _tableRow(dynamic product, int index) {
     final branchStock = product['branch_stock'][0];
     final currentStock = branchStock['current_stock'] ?? 0;
     final lowStockThreshold = branchStock['low_stock_threshold'] ?? 10;
-    final isLowStock = currentStock <= lowStockThreshold;
+    final isOutOfStock = currentStock == 0;
+    final isLowStock = currentStock > 0 && currentStock <= lowStockThreshold;
 
-    return Container(
-      color: isLowStock ? Colors.red[50] : (index % 2 == 0 ? Colors.pink[50] : Colors.white),
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        children: [
-          _TableCell(product['name'] ?? 'Unknown'),
-          _TableCell(product['sku'] ?? '—'),
-          _TableCell(product['categories']?['name'] ?? '—'),
-          _TableCell('₱${(product['price'] ?? 0).toStringAsFixed(2)}'),
-          _TableCell('0'), // You might want to calculate "out" from sales data
-          _TableCell(
-            currentStock.toString(),
-            textColor: isLowStock ? Colors.red : Colors.black87,
-            isBold: isLowStock,
-          ),
-          Expanded(
-            child: Center(
-              child: IconButton(
-                icon: Icon(
-                  removeMode ? Icons.delete_outline : Icons.add_circle_outline,
-                  color: removeMode ? Colors.redAccent : Colors.green,
+    return InkWell(
+      onTap: () => _showProductDetails(product),
+      child: Container(
+        color: isOutOfStock ? Colors.red[50] : (isLowStock ? Colors.orange[50] : (index % 2 == 0 ? Colors.pink[50] : Colors.white)),
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Row(
+          children: [
+            Expanded(
+              flex: 3,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      product['name'] ?? 'Unknown',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (product['sku'] != null)
+                      Text(
+                        product['sku'],
+                        style: const TextStyle(
+                          fontSize: 10,
+                          color: Colors.grey,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                  ],
                 ),
-                onPressed: () {
-                  if (removeMode) {
-                    _showRemoveDialog(index);
-                  } else {
-                    _addStock(index);
-                  }
-                },
               ),
             ),
-          ),
-        ],
+            Expanded(
+              child: _TableCell(product['categories']?['name'] ?? '—'),
+            ),
+            Expanded(
+              child: _TableCell('₱${(product['price'] ?? 0).toStringAsFixed(2)}'),
+            ),
+            Expanded(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    currentStock.toString(),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: isOutOfStock ? Colors.red : (isLowStock ? Colors.orange : Colors.black87),
+                      fontWeight: (isOutOfStock || isLowStock) ? FontWeight.bold : FontWeight.normal,
+                    ),
+                  ),
+                  if (isOutOfStock) ...[
+                    const SizedBox(width: 4),
+                    const Icon(Icons.error_outline, color: Colors.red, size: 14),
+                  ] else if (isLowStock) ...[
+                    const SizedBox(width: 4),
+                    const Icon(Icons.warning_amber, color: Colors.orange, size: 14),
+                  ],
+                ],
+              ),
+            ),
+            Expanded(
+              child: Center(
+                child: IconButton(
+                  icon: Icon(
+                    removeMode ? Icons.delete_outline : Icons.add_circle_outline,
+                    color: removeMode ? Colors.redAccent : Colors.green,
+                    size: 20,
+                  ),
+                  onPressed: () {
+                    if (removeMode) {
+                      _showRemoveDialog(index);
+                    } else {
+                      _showAddStockDialog(index);
+                    }
+                  },
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -333,38 +673,37 @@ class _BrandInventoryPageState extends State<BrandInventoryPage> {
         title: Row(
           children: [
             const CircleAvatar(
-              radius: 24,
+              radius: 20,
               backgroundColor: Colors.white,
-              child: Icon(Icons.business, color: Colors.orangeAccent),
+              child: Icon(Icons.business, color: Colors.orangeAccent, size: 20),
             ),
-            const SizedBox(width: 10),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  widget.brandName,
-                  style: const TextStyle(
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    widget.brandName,
+                    style: const TextStyle(
                       fontWeight: FontWeight.bold,
-                      fontSize: 18,
-                      color: Colors.white),
-                ),
-                Text(
-                  "${widget.branchManager} (${widget.branchCode}) - ${widget.branchName}",
-                  style: const TextStyle(fontSize: 13, color: Colors.white70),
-                ),
-              ],
-            ),
-            const Spacer(),
-            IconButton(
-              icon: const Icon(Icons.notifications_none_rounded,
-                  color: Colors.white, size: 26),
-              onPressed: () {},
+                      fontSize: 16,
+                      color: Colors.white,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Text(
+                    "${widget.branchManager} (${widget.branchCode}) - ${widget.branchName}",
+                    style: const TextStyle(fontSize: 11, color: Colors.white70),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
             ),
           ],
         ),
         actions: [
           Padding(
-            padding: const EdgeInsets.only(right: 12),
+            padding: const EdgeInsets.only(right: 8),
             child: Row(
               children: [
                 _smallButton(
@@ -373,7 +712,7 @@ class _BrandInventoryPageState extends State<BrandInventoryPage> {
                   Colors.orangeAccent,
                   _loadProducts,
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 6),
                 _smallButton(
                   removeMode ? "Done" : "Remove Stock",
                   Colors.white,
@@ -392,26 +731,33 @@ class _BrandInventoryPageState extends State<BrandInventoryPage> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator(color: Colors.orangeAccent))
           : Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(12),
         child: Column(
           children: [
             // Search and filter bar
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(8),
                 border: Border.all(color: Colors.black26),
               ),
               child: Row(
                 children: [
-                  Text(
-                    "${_filteredProducts.length} Products in ${widget.branchName}",
-                    style: const TextStyle(
-                        fontWeight: FontWeight.bold, color: Colors.black87),
-                  ),
-                  const Spacer(),
                   Expanded(
+                    child: Text(
+                      "${_filteredProducts.length} Products",
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                        fontSize: 12,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    flex: 2,
                     child: TextField(
                       controller: _searchController,
                       decoration: const InputDecoration(
@@ -419,17 +765,50 @@ class _BrandInventoryPageState extends State<BrandInventoryPage> {
                         border: InputBorder.none,
                         isDense: true,
                         contentPadding: EdgeInsets.symmetric(horizontal: 8),
+                        hintStyle: TextStyle(fontSize: 12),
                       ),
+                      style: const TextStyle(fontSize: 12),
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  _actionButton("Filter"),
-                  const SizedBox(width: 8),
-                  _actionButton("Sort"),
+                  const SizedBox(width: 6),
+                  _actionButton("Category", _showCategoryDialog),
+                  const SizedBox(width: 6),
+                  _actionButton("Filter", _showFilterDialog),
+                  const SizedBox(width: 6),
+                  _actionButton("Sort", _showSortDialog),
                 ],
               ),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
+            // Active filters display
+            if (_selectedCategory != 'All Categories' || _selectedFilter != 'All')
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Row(
+                  children: [
+                    if (_selectedCategory != 'All Categories')
+                      _filterChip(
+                        'Category: $_selectedCategory',
+                        onRemove: () {
+                          setState(() {
+                            _selectedCategory = 'All Categories';
+                            _applyFilterAndSort();
+                          });
+                        },
+                      ),
+                    if (_selectedFilter != 'All')
+                      _filterChip(
+                        'Stock: $_selectedFilter',
+                        onRemove: () {
+                          setState(() {
+                            _selectedFilter = 'All';
+                            _applyFilterAndSort();
+                          });
+                        },
+                      ),
+                  ],
+                ),
+              ),
             _smallButton(
               "Add Item",
               Colors.white,
@@ -448,6 +827,7 @@ class _BrandInventoryPageState extends State<BrandInventoryPage> {
                 );
               },
             ),
+            const SizedBox(height: 8),
 
             // Products table
             Expanded(
@@ -455,27 +835,42 @@ class _BrandInventoryPageState extends State<BrandInventoryPage> {
                 decoration: BoxDecoration(
                   color: Colors.white,
                   border: Border.all(color: Colors.black26),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(8),
                 ),
                 child: Column(
                   children: [
                     // Table header
                     Container(
                       padding: const EdgeInsets.symmetric(vertical: 8),
-                      color: Colors.pink[50],
+                      decoration: BoxDecoration(
+                        color: Colors.pink[50],
+                        borderRadius: const BorderRadius.only(
+                          topLeft: Radius.circular(8),
+                          topRight: Radius.circular(8),
+                        ),
+                      ),
                       child: const Row(
                         children: [
-                          _TableHeaderCell("Name"),
-                          _TableHeaderCell("SKU"),
-                          _TableHeaderCell("Category"),
-                          _TableHeaderCell("Price"),
-                          _TableHeaderCell("Out"),
-                          _TableHeaderCell("In stock"),
-                          _TableHeaderCell("Action"),
+                          Expanded(
+                            flex: 3,
+                            child: _TableHeaderCell("Product"),
+                          ),
+                          Expanded(
+                            child: _TableHeaderCell("Category"),
+                          ),
+                          Expanded(
+                            child: _TableHeaderCell("Price"),
+                          ),
+                          Expanded(
+                            child: _TableHeaderCell("Stock"),
+                          ),
+                          Expanded(
+                            child: _TableHeaderCell("Action"),
+                          ),
                         ],
                       ),
                     ),
-                    const Divider(height: 1, color: Colors.black26),
+                    const Divider(height: 1, color: Colors.black26, thickness: 1),
 
                     // Products list
                     Expanded(
@@ -484,15 +879,22 @@ class _BrandInventoryPageState extends State<BrandInventoryPage> {
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.inventory_2_outlined, size: 64, color: Colors.grey),
-                            const SizedBox(height: 16),
-                            const Text('No products found for this brand'),
-                            Text('in ${widget.branchName}'),
+                            Icon(Icons.inventory_2_outlined, size: 48, color: Colors.grey),
+                            const SizedBox(height: 12),
+                            const Text(
+                              'No products found',
+                              style: TextStyle(fontSize: 14),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'in ${widget.branchName}',
+                              style: const TextStyle(fontSize: 12, color: Colors.grey),
+                            ),
                             if (_searchController.text.isNotEmpty) ...[
-                              const SizedBox(height: 8),
+                              const SizedBox(height: 6),
                               Text(
                                 'Search: "${_searchController.text}"',
-                                style: const TextStyle(color: Colors.grey),
+                                style: const TextStyle(fontSize: 11, color: Colors.grey),
                               ),
                             ],
                           ],
@@ -519,34 +921,55 @@ class _BrandInventoryPageState extends State<BrandInventoryPage> {
     return InkWell(
       onTap: onPressed,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
           color: bg,
           border: Border.all(color: borderColor),
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(6),
         ),
         child: Text(
           text,
-          style: TextStyle(color: borderColor, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            color: borderColor,
+            fontWeight: FontWeight.bold,
+            fontSize: 11,
+          ),
         ),
       ),
     );
   }
 
-  Widget _actionButton(String text) {
+  Widget _actionButton(String text, VoidCallback onPressed) {
     return ElevatedButton(
       style: ElevatedButton.styleFrom(
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(6),
         ),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        minimumSize: Size.zero,
       ),
-      onPressed: () {},
+      onPressed: onPressed,
       child: Text(
         text,
-        style: const TextStyle(fontSize: 12),
+        style: const TextStyle(fontSize: 11),
+      ),
+    );
+  }
+
+  Widget _filterChip(String label, {required VoidCallback onRemove}) {
+    return Container(
+      margin: const EdgeInsets.only(right: 6),
+      child: Chip(
+        label: Text(
+          label,
+          style: const TextStyle(fontSize: 10),
+        ),
+        onDeleted: onRemove,
+        deleteIcon: const Icon(Icons.close, size: 14),
+        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        visualDensity: VisualDensity.compact,
       ),
     );
   }
@@ -564,11 +987,13 @@ class _TableHeaderCell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: Text(
-        text,
-        textAlign: TextAlign.center,
-        style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black87),
+    return Text(
+      text,
+      textAlign: TextAlign.center,
+      style: const TextStyle(
+        fontWeight: FontWeight.bold,
+        color: Colors.black87,
+        fontSize: 12,
       ),
     );
   }
@@ -583,16 +1008,15 @@ class _TableCell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: Text(
-        text,
-        textAlign: TextAlign.center,
-        style: TextStyle(
-          color: textColor,
-          fontSize: 13,
-          fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
-        ),
+    return Text(
+      text,
+      textAlign: TextAlign.center,
+      style: TextStyle(
+        color: textColor,
+        fontSize: 11,
+        fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
       ),
+      overflow: TextOverflow.ellipsis,
     );
   }
 }

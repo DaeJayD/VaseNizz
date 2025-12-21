@@ -10,6 +10,7 @@ import 'package:vasenizzpos/sales/sales_screen.dart';
 import 'package:vasenizzpos/reports/reports_page.dart';
 import 'package:vasenizzpos/users/users_page.dart';
 import 'package:vasenizzpos/branches/carmen_branch.dart';
+import 'package:vasenizzpos/suppliers/suppliers_creen.dart';
 
 class InventoryPage extends StatefulWidget {
   final String fullName;
@@ -551,6 +552,20 @@ class _InventoryScreenPageState extends State<InventoryPage> {
                                 builder: (context) => AllProductsInventoryScreen(
                                   fullName: widget.fullName,
                                   role: widget.role,
+                                ),
+                              ),
+                            );
+                          }),
+                      const SizedBox(height: 10),
+                      _actionButton("Suppliers", Icons.local_shipping,
+                          Colors.pink[50]!, onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => SuppliersScreen(
+                                  fullName: widget.fullName,
+                                  role: widget.role,
+                                  userId: widget.userId,
                                 ),
                               ),
                             );

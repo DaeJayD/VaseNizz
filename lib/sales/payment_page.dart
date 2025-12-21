@@ -35,6 +35,12 @@ class _PaymentPageState extends State<PaymentPage> {
   double _cashGiven = 0.0;
   double _change = 0.0;
 
+  @override
+  void initState() {
+    super.initState();
+
+  }
+
   void _calculateChange() {
     setState(() {
       _cashGiven = double.tryParse(_cashController.text) ?? 0.0;
@@ -76,6 +82,7 @@ class _PaymentPageState extends State<PaymentPage> {
         barrierDismissible: false,
         builder: (_) => const Center(child: CircularProgressIndicator()),
       );
+
 
       // Process payment
       final saleResponse = await Supabase.instance.client
@@ -148,6 +155,7 @@ class _PaymentPageState extends State<PaymentPage> {
       }
 
       Navigator.pop(context); // Close loading dialog
+
 
       Navigator.pushAndRemoveUntil(
         context,

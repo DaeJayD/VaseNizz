@@ -13,14 +13,15 @@ class ViewReportsPage extends StatefulWidget {
 class _ViewReportsPageState extends State<ViewReportsPage> {
   String selectedRange = "1W";
 
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8E4EC),
+      backgroundColor: const Color(0xFFF8EDF3), // Same as inventory page
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF8C8D9),
+        backgroundColor: const Color(0xFFF5C6D3), // Same pink as inventory
         elevation: 0,
-        toolbarHeight: 100,
+        toolbarHeight: 80, // Normal height like inventory
         title: Row(
           children: [
             Container(

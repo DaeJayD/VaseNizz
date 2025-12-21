@@ -34,6 +34,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
   @override
   void initState() {
     super.initState();
+
     cartItems = List<Map<String, dynamic>>.from(widget.cartItems);
   }
 
@@ -80,8 +81,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
           controller: controller,
           keyboardType: TextInputType.number,
           decoration: const InputDecoration(
-            labelText: "Enter discount percentage",
-            prefixText: "%",
+            labelText: "Enter discount",
             border: OutlineInputBorder(),
           ),
         ),
@@ -114,7 +114,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
     if (percent != null) {
       setState(() => discountPercent = percent);
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text("Discount of ${percent.toStringAsFixed(1)}% applied."),
+        content: Text("Discount of ${percent.toStringAsFixed(1)} applied."),
         backgroundColor: Colors.green,
       ));
     }
@@ -126,7 +126,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
 
   void _navigateBackToProducts() {
-    if (widget.role.toLowerCase() == 'cashier') {
+    if (widget.role.toLowerCase() == 'Cashier') {
 
       Navigator.push(
         context,
@@ -388,7 +388,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
           _buildRow("Subtotal", subtotal),
           _buildRow("Tax (12%)", tax),
           if (discountPercent > 0)
-            _buildRow("Discount (${discountPercent.toStringAsFixed(1)}%)", -discount,
+            _buildRow("Discount (${discountPercent.toStringAsFixed(1)})", -discount,
                 color: Colors.green),
           const Divider(),
           _buildRow("Total", grandTotal, isBold: true, color: Colors.pinkAccent),

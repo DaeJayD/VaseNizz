@@ -42,11 +42,10 @@ class _SalesHistoryPageState extends State<SalesHistoryPage> {
         _hasError = false;
       });
 
-      // Get branch-specific sales history
+      // Get all sales from all branches - no join needed since branch_location is text in sales table
       final response = await Supabase.instance.client
           .from('sales')
           .select('*')
-          .eq('branch_location', widget.location) // Add this line
           .order('created_at', ascending: false);
 
       setState(() {
@@ -137,13 +136,11 @@ class _SalesHistoryPageState extends State<SalesHistoryPage> {
       body: SafeArea(
         child: Column(
           children: [
-            // Header
             Container(
               color: const Color(0xFFF8BBD0),
               padding: const EdgeInsets.all(16),
               child: Row(
                 children: [
-                  // Back arrow
                   IconButton(
                     icon: const Icon(Icons.arrow_back, color: Colors.black),
                     onPressed: () => Navigator.pop(context),
@@ -159,7 +156,7 @@ class _SalesHistoryPageState extends State<SalesHistoryPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text(
-                        'Sales History',
+                        'Sales History - All Branches',  // Updated title
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 18,
@@ -179,7 +176,6 @@ class _SalesHistoryPageState extends State<SalesHistoryPage> {
                 ],
               ),
             ),
-
             // Search bar
             Padding(
               padding: const EdgeInsets.all(10),
@@ -199,27 +195,90 @@ class _SalesHistoryPageState extends State<SalesHistoryPage> {
             ),
 
             // Summary Cards
+            // In your build method, update the summary section:
             if (!_isLoading && !_hasError && _sales.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 10),
-                child: Row(
+                child: Column(
                   children: [
-                    Expanded(
-                      child: _buildSummaryCard(
-                        'Total Sales',
-                        _sales.length.toString(),
-                        Icons.receipt,
-                        Colors.blue,
+                    // All branches info card
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black12,
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: Colors.purple.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Icon(Icons.all_inclusive, color: Colors.purple, size: 20),
+                          ),
+                          const SizedBox(width: 12),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Viewing Data From',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                              const Text(
+                                'All Branches',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black87,
+                                ),
+                              ),
+                              Text(
+                                'Your location: ${widget.location}',
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  color: Colors.black54,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: _buildSummaryCard(
-                        'Total Revenue',
-                        '₱${_sales.fold<double>(0, (sum, sale) => sum + (sale['total_amount'] ?? 0)).toStringAsFixed(2)}',
-                        Icons.attach_money,
-                        Colors.green,
-                      ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildSummaryCard(
+                            'Total Sales',
+                            _sales.length.toString(),
+                            Icons.receipt,
+                            Colors.blue,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: _buildSummaryCard(
+                            'Total Revenue',
+                            '₱${_sales.fold<double>(0, (sum, sale) => sum + (sale['total_amount'] ?? 0)).toStringAsFixed(2)}',
+                            Icons.attach_money,
+                            Colors.green,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -342,6 +401,7 @@ class _SalesHistoryPageState extends State<SalesHistoryPage> {
     final totalAmount = sale['total_amount'] ?? 0;
     final paymentMethod = sale['payment_method']?.toString() ?? 'Cash';
     final createdAt = sale['created_at']?.toString() ?? '';
+    final branchLocation = sale['branch_location']?.toString() ?? 'Main Branch';
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
@@ -402,10 +462,20 @@ class _SalesHistoryPageState extends State<SalesHistoryPage> {
               ),
               const SizedBox(height: 4),
               Text(
-                '${_formatTime(createdAt)} - #${saleId.substring(0, 8).toUpperCase()}',
+                '${_formatTime(createdAt)} - #${saleId.length >= 8 ? saleId.substring(0, 8).toUpperCase() : saleId.toUpperCase()}',
                 style: const TextStyle(
                   fontSize: 12,
                   color: Colors.black54,
+                ),
+              ),
+              const SizedBox(height: 2),
+              // Branch information from the sales table
+              Text(
+                'Branch: $branchLocation',
+                style: const TextStyle(
+                  fontSize: 11,
+                  color: Colors.black45,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
               if (sale['cashier_name'] != null)

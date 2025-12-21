@@ -118,11 +118,10 @@ class _CarmenInventoryState extends State<CarmenInventory> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // HEADER - Carmen Specific
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-              decoration: const BoxDecoration(
-                color: Color(0xFFFFD9E1), // Carmen pink
+              decoration: BoxDecoration(
+                color: Colors.purple[300]!,
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black12,
@@ -132,22 +131,12 @@ class _CarmenInventoryState extends State<CarmenInventory> {
                 ],
               ),
               child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Container(
-                    width: 48,
-                    height: 48,
-                    decoration: const BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
+                  CircleAvatar(
+                    backgroundImage: const AssetImage('assets/logo.png'),
+                    radius: 22,
+                    backgroundColor: Colors.white,
                     ),
-                    child: const Center(
-                      child: Text(
-                        "LOGO",
-                        style: TextStyle(fontSize: 12),
-                      ),
-                    ),
-                  ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Column(

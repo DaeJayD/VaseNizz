@@ -83,9 +83,17 @@ class _ReceiptPageState extends State<ReceiptPage> {
   }
 
   void _navigateBasedOnRole() {
+    print('=== NAVIGATION DEBUG ===');
+    print('Role: "${widget.role}"');
+    print('=======================');
 
-    if (widget.role.toLowerCase() == 'cashier') {
-      Navigator.pushReplacement(
+    // Handle all possible role cases
+    final userRole = widget.role.toLowerCase().trim();
+
+    // If user is cashier, staff, or employee → go to EmployeeHomeScreen
+    if (userRole == 'employee' || userRole == 'staff' || userRole == 'cashier') {
+      print('🔄 Redirecting to EmployeeHomeScreen');
+      Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(
           builder: (context) => EmployeeHomeScreen(
@@ -95,9 +103,13 @@ class _ReceiptPageState extends State<ReceiptPage> {
             location: widget.location,
           ),
         ),
+            (route) => false,
       );
-    } else {
-      Navigator.pushReplacement(
+    }
+    // If user is owner, admin, manager → go to SalesScreen
+    else if (userRole == 'owner' || userRole == 'admin' || userRole == 'manager')  {
+      print('🔄 Redirecting to SalesScreen (Owner/Admin/Manager)');
+      Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(
           builder: (_) => SalesScreen(
@@ -107,6 +119,23 @@ class _ReceiptPageState extends State<ReceiptPage> {
             location: widget.location,
           ),
         ),
+            (route) => false,
+      );
+    }
+    // Default fallback
+    else {
+      print('🔄 Default: Redirecting to SalesScreen');
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(
+          builder: (_) => SalesScreen(
+            fullName: widget.fullName,
+            role: widget.role,
+            userId: widget.userId,
+            location: widget.location,
+          ),
+        ),
+            (route) => false,
       );
     }
   }
@@ -215,7 +244,9 @@ class _ReceiptPageState extends State<ReceiptPage> {
           ),
           const SizedBox(height: 5),
           Text(
-            "Receipt #${widget.saleId.substring(0, 8).toUpperCase()}",
+            "Receipt #${widget.saleId.length >= 8
+                ? widget.saleId.substring(0, 8).toUpperCase()
+                : widget.saleId.toUpperCase().toUpperCase()}",
             style: const TextStyle(
               fontSize: 12,
               color: Colors.black87,

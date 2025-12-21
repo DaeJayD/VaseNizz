@@ -6,6 +6,7 @@ import 'package:vasenizzpos/sales/sales_screen.dart';
 import 'package:vasenizzpos/inventory/inventory_screen.dart';
 import 'package:vasenizzpos/users/users_page.dart';
 import 'logs.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ViewReportsPage extends StatefulWidget {
   final String fullName;
@@ -30,32 +31,192 @@ class ViewReportsPage extends StatefulWidget {
 class _ViewReportsPageState extends State<ViewReportsPage> {
   late int _selectedIndex;
   String selectedRange = "1W";
+  final supabase = Supabase.instance.client;
 
-  List<Map<String, String>> logs = [
-    {
-      'action': 'Product Added',
-      'description': 'SPF 50+++ sunscreen added to inventory',
-      'time': '2 hours ago',
-      'user': 'Thofia Concepcion'
-    },
-    {
-      'action': 'Sale Completed',
-      'description': 'Online order #12345 completed',
-      'time': '5 hours ago',
-      'user': 'System'
-    },
-    {
-      'action': 'Low Stock Alert',
-      'description': 'Beauty Wise foundation running low',
-      'time': '1 day ago',
-      'user': 'Inventory System'
-    },
-  ];
+  // Real data state variables
+  Map<String, dynamic> _salesData = {
+    'totalSales': 0.0,
+    'previousPeriodSales': 0.0,
+    'salesChange': 0.0,
+    'salesHistory': [],
+    'totalOrders': 0,
+  };
+  List<Map<String, dynamic>> _topSellingProducts = [];
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
     _selectedIndex = widget.initialIndex;
+    _loadReportData();
+  }
+
+  Future<void> _loadReportData() async {
+    setState(() => _isLoading = true);
+
+    try {
+      await Future.wait([
+        _loadSalesData(),
+        _loadTopSellingProducts(),
+      ]);
+    } catch (e) {
+      print('Error loading report data: $e');
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _loadSalesData() async {
+    try {
+      final today = DateTime.now();
+      DateTime startDate;
+      DateTime endDate = DateTime.now();
+
+      // Set date range based on selection
+      switch (selectedRange) {
+        case "1D":
+          startDate = DateTime(today.year, today.month, today.day);
+          break;
+        case "1W":
+          startDate = today.subtract(const Duration(days: 7));
+          break;
+        case "1M":
+          startDate = DateTime(today.year, today.month - 1, today.day);
+          break;
+        case "3M":
+          startDate = DateTime(today.year, today.month - 3, today.day);
+          break;
+        case "6M":
+          startDate = DateTime(today.year, today.month - 6, today.day);
+          break;
+        case "1Yr":
+          startDate = DateTime(today.year - 1, today.month, today.day);
+          break;
+        default:
+          startDate = today.subtract(const Duration(days: 7));
+      }
+
+      // Get total sales for current period
+      final salesResponse = await supabase
+          .from('sales')
+          .select('total_amount, created_at')
+          .gte('created_at', startDate.toIso8601String())
+          .lte('created_at', endDate.toIso8601String());
+
+      final sales = List<Map<String, dynamic>>.from(salesResponse);
+
+      // Previous period
+      final previousStartDate = startDate.subtract(endDate.difference(startDate));
+      final previousEndDate = startDate.subtract(const Duration(seconds: 1));
+
+      final previousSalesResponse = await supabase
+          .from('sales')
+          .select('total_amount')
+          .gte('created_at', previousStartDate.toIso8601String())
+          .lte('created_at', previousEndDate.toIso8601String());
+
+      final previousSales = List<Map<String, dynamic>>.from(previousSalesResponse);
+
+      // Calculate totals
+      double totalSales = 0.0;
+      double previousTotalSales = 0.0;
+
+      for (final sale in sales) {
+        totalSales += (sale['total_amount'] ?? 0.0);
+      }
+
+      for (final sale in previousSales) {
+        previousTotalSales += (sale['total_amount'] ?? 0.0);
+      }
+
+      // Calculate percentage change
+      double salesChange = 0.0;
+      if (previousTotalSales > 0) {
+        salesChange = ((totalSales - previousTotalSales) / previousTotalSales) * 100;
+      } else if (totalSales > 0) {
+        salesChange = 100.0;
+      }
+
+      // Get sales history (last 7 days)
+      final List<FlSpot> salesHistory = [];
+      for (int i = 6; i >= 0; i--) {
+        final day = today.subtract(Duration(days: i));
+        final dayStart = DateTime(day.year, day.month, day.day);
+        final dayEnd = DateTime(day.year, day.month, day.day, 23, 59, 59);
+
+        final daySalesResponse = await supabase
+            .from('sales')
+            .select('total_amount')
+            .gte('created_at', dayStart.toIso8601String())
+            .lte('created_at', dayEnd.toIso8601String());
+
+        final daySales = List<Map<String, dynamic>>.from(daySalesResponse);
+        double dayTotal = 0.0;
+        for (final sale in daySales) {
+          dayTotal += (sale['total_amount'] ?? 0.0);
+        }
+
+        salesHistory.add(FlSpot((6 - i).toDouble(), dayTotal.toDouble()));
+      }
+
+      setState(() {
+        _salesData = {
+          'totalSales': totalSales,
+          'previousPeriodSales': previousTotalSales,
+          'salesChange': salesChange,
+          'salesHistory': salesHistory,
+          'totalOrders': sales.length,
+        };
+      });
+    } catch (e) {
+      print('Error loading sales data: $e');
+    }
+  }
+
+  Future<void> _loadTopSellingProducts() async {
+    try {
+      final today = DateTime.now();
+      final weekAgo = today.subtract(const Duration(days: 7));
+
+      final response = await supabase
+          .from('sale_items')
+          .select('''
+            product_id, 
+            quantity, 
+            products(name, price)
+          ''')
+          .gte('created_at', weekAgo.toIso8601String());
+
+      final saleItems = List<Map<String, dynamic>>.from(response);
+
+      // Aggregate product sales
+      final productSales = <String, Map<String, dynamic>>{};
+      for (final item in saleItems) {
+        final productId = item['product_id'].toString();
+        final product = item['products'] ?? {};
+        final productName = product['name'] ?? 'Unknown Product';
+        final quantity = item['quantity'] ?? 0;
+
+        if (productSales.containsKey(productId)) {
+          productSales[productId]!['quantity'] += quantity;
+        } else {
+          productSales[productId] = {
+            'name': productName,
+            'quantity': quantity,
+            'price': product['price'] ?? 0.0,
+          };
+        }
+      }
+
+      final topSellingList = productSales.values.toList();
+      topSellingList.sort((a, b) => (b['quantity'] ?? 0).compareTo(a['quantity'] ?? 0));
+
+      setState(() {
+        _topSellingProducts = topSellingList.take(4).toList();
+      });
+    } catch (e) {
+      print('Error loading top selling products: $e');
+    }
   }
 
   void _onNavTapped(int index) {
@@ -122,35 +283,29 @@ class _ViewReportsPageState extends State<ViewReportsPage> {
     );
   }
 
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8E4EC),
+      backgroundColor: const Color(0xFFF8EDF3), // Same as inventory page
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF8C8D9),
-        elevation: 0,
-        toolbarHeight: 90,
+        backgroundColor: const Color(0xFFF5C6D3), // Same pink as inventory
+        elevation: 0, // Normal height like inventory
         title: Row(
           children: [
-            Container(
-              width: 55,
-              height: 55,
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                shape: BoxShape.circle,
-              ),
-              child: const Center(
-                child: Text("LOGO", style: TextStyle(fontSize: 12)),
-              ),
+            CircleAvatar(
+              backgroundImage: const AssetImage('assets/logo.png'),
+              radius: 22,
+              backgroundColor: Colors.white,
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 10),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(widget.fullName,
+                Text("Reports Page",
                     style:
-                    const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                Text(widget.role,
+                    const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                Text("${widget.fullName} (${widget.role})",
                     style: const TextStyle(fontSize: 13, color: Colors.black54)),
               ],
             ),
@@ -160,7 +315,7 @@ class _ViewReportsPageState extends State<ViewReportsPage> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => ActivityLogsPage(logs: logs),
+                    builder: (context) => ActivityLogsPage(logs: [],),
                   ),
                 );
               },
@@ -170,33 +325,43 @@ class _ViewReportsPageState extends State<ViewReportsPage> {
                   style: TextStyle(color: Colors.black, fontSize: 13)),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                padding:
+                const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(20)),
               ),
             ),
             const SizedBox(width: 10),
-            const Icon(Icons.notifications_none_rounded,
-                color: Colors.white, size: 28),
+            IconButton(
+              icon: const Icon(Icons.refresh, color: Colors.white, size: 28),
+              onPressed: _loadReportData,
+            ),
           ],
         ),
       ),
-      body: SingleChildScrollView(
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // UNIFORM BUTTONS
             Row(
               children: [
-                _tabButton("Analytics Dashboard", true),
+                Expanded(
+                  child: _tabButton("Analytics Dashboard", true),
+                ),
                 const SizedBox(width: 8),
-                _tabButton("Generate Report", false, onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (context) => const GenerateReportPage()),
-                  );
-                }),
+                Expanded(
+                  child: _tabButton("Generate Report", false, onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => const GenerateReportPage()),
+                    );
+                  }),
+                ),
               ],
             ),
             const SizedBox(height: 20),
@@ -210,9 +375,15 @@ class _ViewReportsPageState extends State<ViewReportsPage> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                _statCard(Icons.store, "1,100", "In-Store Orders",
+                _statCard(
+                    Icons.store,
+                    _salesData['totalOrders'].toString(),
+                    "Total Orders",
                     const Color(0xFFFAC7D0)),
-                _statCard(Icons.shopping_bag, "578", "Online Orders",
+                _statCard(
+                    Icons.attach_money,
+                    "₱${_salesData['totalSales'].toStringAsFixed(2)}",
+                    "In-Store Total Sales",
                     const Color(0xFFD2C6FC)),
               ],
             ),
@@ -225,48 +396,43 @@ class _ViewReportsPageState extends State<ViewReportsPage> {
                   label: Text(r),
                   selected: selectedRange == r,
                   selectedColor: const Color(0xFFD2C6FC),
-                  onSelected: (_) =>
-                      setState(() => selectedRange = r),
+                  onSelected: (_) {
+                    setState(() => selectedRange = r);
+                    _loadReportData(); // Reload data when range changes
+                  },
                 ))
                     .toList(),
               ),
             ),
             const SizedBox(height: 25),
             const Text("Revenue",
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                style: TextStyle(
+                    fontWeight: FontWeight.bold, fontSize: 16)),
             const SizedBox(height: 5),
             Row(
-              children: const [
-                Text("₱21,452.57",
-                    style: TextStyle(
+              children: [
+                Text("₱${_salesData['totalSales'].toStringAsFixed(2)}",
+                    style: const TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
                         color: Colors.black87)),
-                SizedBox(width: 10),
+                const SizedBox(width: 10),
                 Chip(
-                    label: Text("+7.6%"),
-                    backgroundColor: Color(0xFFD8F9D4),
-                    labelStyle: TextStyle(color: Colors.green)),
+                  label: Text(
+                      "${_salesData['salesChange'] >= 0 ? '+' : ''}${_salesData['salesChange'].toStringAsFixed(1)}%"),
+                  backgroundColor: _salesData['salesChange'] >= 0
+                      ? const Color(0xFFD8F9D4)
+                      : const Color(0xFFFFE0E0),
+                  labelStyle: TextStyle(
+                    color: _salesData['salesChange'] >= 0
+                        ? Colors.green
+                        : Colors.red,
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 20),
             _buildLineChart(),
-            const SizedBox(height: 30),
-            const Text("Inventory by Brand",
-                style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    fontFamily: "Poppins")),
-            const Divider(thickness: 1),
-            const SizedBox(height: 15),
-            _buildBrandInventory("Beauty Wise", "70 Products * 2",
-                hasLowStock: true),
-            const SizedBox(height: 12),
-            _buildBrandInventory("Brand2", "Total Prod. * Recently added prod.",
-                showLow: true),
-            const SizedBox(height: 12),
-            _buildBrandInventory("Brand3", "Total Prod. * Recently added prod.",
-                showLow: true),
             const SizedBox(height: 30),
             const Text("Top Selling Products",
                 style: TextStyle(
@@ -282,12 +448,11 @@ class _ViewReportsPageState extends State<ViewReportsPage> {
               mainAxisSpacing: 12,
               crossAxisSpacing: 12,
               childAspectRatio: 1.5,
-              children: [
-                _topSellingProductCard("SPF 50+++", "267"),
-                _topSellingProductCard("Product1", "124"),
-                _topSellingProductCard("Product2", "88"),
-                _topSellingProductCard("Product3", "450"),
-              ],
+              children: _topSellingProducts
+                  .map((product) => _topSellingProductCard(
+                  product['name'] ?? 'Unknown',
+                  product['quantity'].toString()))
+                  .toList(),
             ),
           ],
         ),
@@ -317,33 +482,22 @@ class _ViewReportsPageState extends State<ViewReportsPage> {
           gridData: const FlGridData(show: false),
           borderData: FlBorderData(show: false),
           titlesData: FlTitlesData(
-            leftTitles:
-            const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-            rightTitles:
-            const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-            topTitles:
-            const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
             bottomTitles: AxisTitles(
               sideTitles: SideTitles(
                 showTitles: true,
                 getTitlesWidget: (value, meta) {
                   const days = ["M", "T", "W", "T", "F", "S", "S"];
-                  return Text(days[value.toInt() % days.length]);
+                  return value.toInt() < days.length ? Text(days[value.toInt()]) : Text("");
                 },
               ),
             ),
           ),
           lineBarsData: [
             LineChartBarData(
-              spots: const [
-                FlSpot(0, 2),
-                FlSpot(1, 3),
-                FlSpot(2, 2.5),
-                FlSpot(3, 3.5),
-                FlSpot(4, 4.5),
-                FlSpot(5, 2),
-                FlSpot(6, 1.8),
-              ],
+              spots: _salesData['salesHistory'] ?? [FlSpot(0, 0)],
               color: const Color(0xFF9C89E9),
               barWidth: 3,
               isCurved: true,
@@ -355,55 +509,6 @@ class _ViewReportsPageState extends State<ViewReportsPage> {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildBrandInventory(String brandName, String details,
-      {bool hasLowStock = false, bool showLow = false}) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(brandName,
-                    style: const TextStyle(
-                        fontSize: 16, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 4),
-                Text(details,
-                    style:
-                    const TextStyle(fontSize: 14, color: Colors.black54)),
-              ],
-            ),
-          ),
-          if (hasLowStock || showLow)
-            Row(
-              children: [
-                Checkbox(
-                    value: false,
-                    onChanged: (value) {},
-                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap),
-                Text(
-                  hasLowStock ? "a low stock" : "show low *",
-                  style: const TextStyle(fontSize: 12, color: Colors.black54),
-                ),
-              ],
-            ),
-        ],
       ),
     );
   }
@@ -430,7 +535,7 @@ class _ViewReportsPageState extends State<ViewReportsPage> {
               color: const Color(0xFFF8C8D9),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: const Icon(Icons.image, color: Colors.white),
+            child: const Icon(Icons.inventory_2, color: Colors.white),
           ),
           const SizedBox(height: 8),
           Text(productName,
@@ -445,6 +550,7 @@ class _ViewReportsPageState extends State<ViewReportsPage> {
               Text(salesCount,
                   style: const TextStyle(
                       fontSize: 16, fontWeight: FontWeight.bold)),
+              const Text(" sold", style: TextStyle(fontSize: 12)),
             ],
           ),
         ],

@@ -31,6 +31,7 @@ class _SalesScreenState extends State<SalesScreen> {
   @override
   void initState() {
     super.initState();
+
     _selectedIndex = widget.initialIndex;
   }
 
@@ -100,7 +101,6 @@ class _SalesScreenState extends State<SalesScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF8EDF3),
       appBar: AppBar(
-        automaticallyImplyLeading: false,
         backgroundColor: const Color(0xFFF5C6D3),
         elevation: 0,
         title: Row(
@@ -117,10 +117,12 @@ class _SalesScreenState extends State<SalesScreen> {
                 const Text(
                   "Sales Manager",
                   style: TextStyle(
-                      fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87),
+                      fontSize: 18,
+                      fontWeight:
+                      FontWeight.bold,
+                      color: Colors.black87),
                 ),
-                Text(
-                  "\n${widget.fullName} (${widget.role})",
+                Text("${widget.fullName} (${widget.role})",
                   style: const TextStyle(fontSize: 12, color: Colors.black54),
                 ),
               ],

@@ -76,7 +76,6 @@ class _AllProductsPageState extends State<AllProductsPage> {
               id,
               name,
               price,
-              sku,
               categories(name),
               brands(name),
               branch_stock(
@@ -158,11 +157,9 @@ class _AllProductsPageState extends State<AllProductsPage> {
     setState(() {
       _filteredProducts = _products.where((product) {
         final productName = product['name']?.toString().toLowerCase() ?? '';
-        final productSku = product['sku']?.toString().toLowerCase() ?? '';
         final categoryName = product['categories']?['name']?.toString().toLowerCase() ?? '';
         final brandName = product['brands']?['name']?.toString().toLowerCase() ?? '';
         return productName.contains(query) ||
-            productSku.contains(query) ||
             categoryName.contains(query) ||
             brandName.contains(query);
       }).toList();

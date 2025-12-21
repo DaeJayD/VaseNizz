@@ -5,6 +5,7 @@ import '../employees/emp_profile.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:vasenizzpos/sales/sales_screen.dart';
 import 'package:vasenizzpos/inventory/inventory_screen.dart';
+import 'package:vasenizzpos/reports/reports_page.dart';
 
 class UsersPage extends StatefulWidget {
   final String fullName;
@@ -30,7 +31,7 @@ class _UsersPageState extends State<UsersPage> {
   int _selectedIndex = 4;
 
   List<Map<String, dynamic>> employees = [];
-  List<Map<String, dynamic>> branches = [];   // ✅ NEW: real branches list
+  List<Map<String, dynamic>> branches = [];
 
   TextEditingController nameController = TextEditingController();
   TextEditingController phoneController = TextEditingController();
@@ -46,10 +47,10 @@ class _UsersPageState extends State<UsersPage> {
   void initState() {
     super.initState();
     _fetchEmployees();
-    _fetchBranches();  // ✅ NEW
+    _fetchBranches();
   }
 
-  // ✅ FETCH BRANCH LOCATIONS FROM SUPABASE
+
   Future<void> _fetchBranches() async {
     try {
       final response = await Supabase.instance.client
@@ -117,7 +118,7 @@ class _UsersPageState extends State<UsersPage> {
         'dob': dob,
         'username': username,
         'user_id': userId,
-        'branch': selectedBranch,     // ✅ REAL LOCATION SAVED
+        'branch': selectedBranch,
         'role': selectedRole,
         'password': '1',
       }).select();
@@ -197,12 +198,12 @@ class _UsersPageState extends State<UsersPage> {
         );
         break;
       case 3:
-        nextPage = SalesScreen(
+        nextPage = ViewReportsPage(
           fullName: widget.fullName,
           role: widget.role,
           userId: widget.userId,
           location: widget.location,
-          initialIndex: 1,
+          initialIndex: 3,
         );
         break;
       case 4:
@@ -231,11 +232,10 @@ class _UsersPageState extends State<UsersPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8E9EE),
-
+      backgroundColor: const Color(0xFFF8EDF3),
       appBar: AppBar(
         automaticallyImplyLeading: false,
-        backgroundColor: const Color(0xFFFFB6C1),
+        backgroundColor: const Color(0xFFF5C6D3),
         elevation: 0,
         title: Row(
           children: [
@@ -369,6 +369,7 @@ class _UsersPageState extends State<UsersPage> {
                                                 MaterialPageRoute(
                                                   builder: (context) =>
                                                       EmployeeProfilePage(
+                                                        userName: employee['name'],
                                                         userId: employee['user_id'],
                                                       ),
                                                 ),
@@ -440,7 +441,6 @@ class _UsersPageState extends State<UsersPage> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      // ✅ REAL BRANCHES DROPDOWN (LOCATION ONLY)
                       Flexible(
                         child: DropdownButtonFormField<String>(
                           value: selectedBranch,

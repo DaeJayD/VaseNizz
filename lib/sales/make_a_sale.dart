@@ -35,6 +35,8 @@ class _MakeASaleState extends State<MakeASale> {
   @override
   void initState() {
     super.initState();
+
+
     // Initialize cart with existing items if provided
     if (widget.existingCart != null) {
       cart = List<Map<String, dynamic>>.from(widget.existingCart!);
@@ -42,6 +44,8 @@ class _MakeASaleState extends State<MakeASale> {
     _loadBrands();
     _searchController.addListener(_filterBrands);
   }
+
+
 
   Future<void> _loadBrands() async {
     try {
@@ -139,7 +143,7 @@ class _MakeASaleState extends State<MakeASale> {
                   style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black87),
                 ),
                 Text(
-                  "${widget.fullName} (03085)",
+                  "${widget.fullName} ${widget.role}",
                   style: const TextStyle(fontSize: 12, color: Colors.black54),
                 ),
                 if (cart.isNotEmpty)
@@ -332,7 +336,7 @@ class _MakeASaleState extends State<MakeASale> {
                                 builder: (context) => BrandProductsPage(
                                   brand: brand,
                                   fullName: widget.fullName,
-                                  role: 'Cashier',
+                                  role: widget.role,
                                   existingCart: cart,
                                   userId: widget.userId,
                                   location: widget.location,

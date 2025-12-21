@@ -32,9 +32,18 @@ class _BrandProductsPageState extends State<BrandProductsPage> {
   bool _isLoading = true;
   bool _hasError = false;
   int _currentPage = 0;
-  final int _pageSize = 10;
+  final int _pageSize = 20;
   bool _hasMore = true;
   bool _isLoadingMore = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProducts();
+    _searchController.addListener(_filterProducts);
+
+  }
+
 
   Future<void> _loadProducts({bool loadMore = false}) async {
     if (_isLoadingMore) return;
@@ -53,72 +62,58 @@ class _BrandProductsPageState extends State<BrandProductsPage> {
       }
 
       final from = _currentPage * _pageSize;
-      final to = from + _pageSize - 1;
 
-      // Get products for this brand with branch stock information
+      // Use the same approach as AllProductsPage but filtered by brand_id
       final response = await Supabase.instance.client
-          .from('branch_brands')
+          .from('products')
           .select('''
-          brands:brand_id(
-            id,
-            name,
-            description,
-            products(
-              id,
-              name,
-              price,
-              sku,
-              categories(name),
-              brands(name),
-              branch_stock(
-                current_stock
-              )
-            )
+          id,
+          name,
+          price,
+          sku,
+          categories(name),
+          brands!inner(id, name, description),
+          branch_stock(
+            current_stock,
+            branches(name)
           )
         ''')
-          .eq('brand_id', widget.brand['id'])
-          .range(from, to);
+          .eq('brand_id', widget.brand['id']) // Filter by specific brand
+          .order('name')
+          .range(from, from + _pageSize - 1);
 
-      // Extract products from the brand
+      print('Products response length: ${response.length}');
+
       List<Map<String, dynamic>> products = [];
-      for (final branchBrand in response) {
-        final brand = branchBrand['brands'];
-        if (brand != null && brand['products'] != null) {
-          final brandProducts = List<Map<String, dynamic>>.from(brand['products']);
-          for (final product in brandProducts) {
-            // Add stock from branch_stock or default to 0
-            final branchStock = product['branch_stock'] as List?;
-            final stock = branchStock != null && branchStock.isNotEmpty
-                ? (branchStock[0]['current_stock'] ?? 0)
-                : 0;
 
-            products.add({
-              ...product,
-              'stock': stock,
-            });
+      for (final product in response) {
+        // Calculate total stock across all branches
+        final branchStocks = product['branch_stock'] as List?;
+        int totalStock = 0;
+        List<String> branches = [];
+
+        if (branchStocks != null && branchStocks.isNotEmpty) {
+          for (final stock in branchStocks) {
+            totalStock += (stock['current_stock'] as int? ?? 0);
+            final branchName = stock['branches']?['name']?.toString();
+            if (branchName != null) {
+              branches.add(branchName);
+            }
           }
         }
+
+        products.add({
+          ...product,
+          'stock': totalStock,
+          'branches': branches,
+        });
       }
-
-      // Remove duplicates by product ID
-      final uniqueProducts = <String, Map<String, dynamic>>{};
-      for (final product in products) {
-        final productId = product['id']?.toString();
-        if (productId != null && !uniqueProducts.containsKey(productId)) {
-          uniqueProducts[productId] = product;
-        }
-      }
-
-      List<Map<String, dynamic>> finalProducts = uniqueProducts.values.toList();
-
-      // Sort by name
-      finalProducts.sort((a, b) => (a['name']?.toString() ?? '').compareTo(b['name']?.toString() ?? ''));
 
       setState(() {
         if (loadMore) {
-          _products.addAll(finalProducts);
+          _products.addAll(products);
         } else {
-          _products = finalProducts;
+          _products = products;
         }
         _filteredProducts = _products;
         _hasMore = response.length == _pageSize;
@@ -126,6 +121,9 @@ class _BrandProductsPageState extends State<BrandProductsPage> {
         _isLoadingMore = false;
         if (loadMore) _currentPage++;
       });
+
+      print(' Loaded ${products.length} products for brand ${widget.brand['name']}');
+
     } catch (e) {
       print('Error loading products: $e');
       setState(() {
@@ -139,14 +137,19 @@ class _BrandProductsPageState extends State<BrandProductsPage> {
   void _filterProducts() {
     final query = _searchController.text.toLowerCase();
     setState(() {
-      _filteredProducts = _products.where((product) {
-        final productName = product['name']?.toString().toLowerCase() ?? '';
-        final productSku = product['sku']?.toString().toLowerCase() ?? '';
-        final categoryName = product['categories']?['name']?.toString().toLowerCase() ?? '';
-        return productName.contains(query) ||
-            productSku.contains(query) ||
-            categoryName.contains(query);
-      }).toList();
+      if (query.isEmpty) {
+        _filteredProducts = _products;
+      } else {
+        _filteredProducts = _products.where((product) {
+          final productName = product['name']?.toString().toLowerCase() ?? '';
+          final categoryName = product['categories']?['name']?.toString().toLowerCase() ?? '';
+          final brandName = product['brands']?['name']?.toString().toLowerCase() ?? '';
+
+          return productName.contains(query) ||
+              categoryName.contains(query) ||
+              brandName.contains(query);
+        }).toList();
+      }
     });
   }
 
@@ -155,7 +158,10 @@ class _BrandProductsPageState extends State<BrandProductsPage> {
 
     if (productStock <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${product['name']} is out of stock')),
+        SnackBar(
+          content: Text('${product['name']} is out of stock'),
+          backgroundColor: Colors.red,
+        ),
       );
       return;
     }
@@ -168,7 +174,10 @@ class _BrandProductsPageState extends State<BrandProductsPage> {
     final currentCartQty = (existingItem['cart_quantity'] as int?) ?? 0;
     if (currentCartQty >= productStock) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Cannot add more than available stock')),
+        SnackBar(
+          content: Text('Cannot add more than available stock ($productStock)'),
+          backgroundColor: Colors.orange,
+        ),
       );
       return;
     }
@@ -188,7 +197,10 @@ class _BrandProductsPageState extends State<BrandProductsPage> {
     });
 
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('${product['name']} added to cart')),
+      SnackBar(
+        content: Text('${product['name']} added to cart'),
+        backgroundColor: Colors.green,
+      ),
     );
   }
 
@@ -209,17 +221,20 @@ class _BrandProductsPageState extends State<BrandProductsPage> {
 
   Color _getBrandColor(String brandName) {
     final colors = [
-      Color(0xFF7FC8F8), // Blue
-      Color(0xFFF5C6D3), // Pink
-      Color(0xFFC6F5D3), // Green
-      Color(0xFFF5E6C6), // Yellow
-      Color(0xFFD3C6F5), // Purple
+      const Color(0xFF7FC8F8), // Blue
+      const Color(0xFFF5C6D3), // Pink
+      const Color(0xFFC6F5D3), // Green
+      const Color(0xFFF5E6C6), // Yellow
+      const Color(0xFFD3C6F5), // Purple
     ];
     final index = brandName.hashCode % colors.length;
     return colors[index];
   }
 
+
   void _goToCheckout() {
+    if (cart.isEmpty) return;
+
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -247,7 +262,7 @@ class _BrandProductsPageState extends State<BrandProductsPage> {
               radius: 20,
               child: Text(
                 _getBrandInitial(widget.brand['name']),
-                style: TextStyle(
+                style: const TextStyle(
                   fontWeight: FontWeight.bold,
                   color: Colors.white,
                 ),
@@ -303,6 +318,7 @@ class _BrandProductsPageState extends State<BrandProductsPage> {
       ),
       body: Column(
         children: [
+          // Search Bar
           Padding(
             padding: const EdgeInsets.all(12),
             child: TextField(
@@ -316,8 +332,30 @@ class _BrandProductsPageState extends State<BrandProductsPage> {
                 filled: true,
                 fillColor: Colors.white,
               ),
+              onChanged: (value) => _filterProducts(),
             ),
           ),
+
+          // Results Count
+          if (!_isLoading && !_hasError)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                children: [
+                  Text(
+                    '${_filteredProducts.length} products found',
+                    style: const TextStyle(
+                      color: Colors.black54,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+          const SizedBox(height: 8),
+
+          // Products Grid
           Expanded(
             child: _buildProductGrid(),
           ),
@@ -327,8 +365,8 @@ class _BrandProductsPageState extends State<BrandProductsPage> {
   }
 
   Widget _buildProductGrid() {
-    if (_isLoading) {
-      return Center(
+    if (_isLoading && _products.isEmpty) {
+      return const Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -340,18 +378,18 @@ class _BrandProductsPageState extends State<BrandProductsPage> {
       );
     }
 
-    if (_hasError) {
+    if (_hasError && _products.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.error_outline, size: 64, color: Colors.red),
-            SizedBox(height: 16),
-            Text('Failed to load products'),
-            SizedBox(height: 16),
+            const Icon(Icons.error_outline, size: 64, color: Colors.red),
+            const SizedBox(height: 16),
+            const Text('Failed to load products'),
+            const SizedBox(height: 16),
             ElevatedButton(
               onPressed: _loadProducts,
-              child: Text('Retry'),
+              child: const Text('Retry'),
             ),
           ],
         ),
@@ -363,14 +401,22 @@ class _BrandProductsPageState extends State<BrandProductsPage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.inventory_2_outlined, size: 64, color: Colors.grey),
-            SizedBox(height: 16),
+            const Icon(Icons.inventory_2_outlined, size: 64, color: Colors.grey),
+            const SizedBox(height: 16),
             Text(
               _searchController.text.isEmpty
                   ? 'No products available for ${widget.brand['name']}'
                   : 'No products found for "${_searchController.text}"',
               textAlign: TextAlign.center,
             ),
+            if (_searchController.text.isNotEmpty)
+              TextButton(
+                onPressed: () {
+                  _searchController.clear();
+                  _filterProducts();
+                },
+                child: const Text('Clear search'),
+              ),
           ],
         ),
       );
@@ -378,7 +424,7 @@ class _BrandProductsPageState extends State<BrandProductsPage> {
 
     return NotificationListener<ScrollNotification>(
       onNotification: (ScrollNotification scrollInfo) {
-        if (scrollInfo.metrics.pixels == scrollInfo.metrics.maxScrollExtent && _hasMore) {
+        if (scrollInfo.metrics.pixels == scrollInfo.metrics.maxScrollExtent && _hasMore && !_isLoadingMore) {
           _loadNextPage();
         }
         return false;
@@ -394,7 +440,7 @@ class _BrandProductsPageState extends State<BrandProductsPage> {
         itemCount: _filteredProducts.length + (_isLoadingMore ? 1 : 0),
         itemBuilder: (context, index) {
           if (index == _filteredProducts.length && _isLoadingMore) {
-            return Center(child: CircularProgressIndicator());
+            return const Center(child: CircularProgressIndicator());
           }
 
           final product = _filteredProducts[index];
@@ -403,6 +449,7 @@ class _BrandProductsPageState extends State<BrandProductsPage> {
               ? (cart.firstWhere((item) => item['id'] == product['id'])['cart_quantity'] as int)
               : 0;
           final productStock = product['stock'] is int ? product['stock'] : int.tryParse(product['stock']?.toString() ?? '0') ?? 0;
+          final branches = product['branches'] as List<String>? ?? [];
 
           return Card(
             shape: RoundedRectangleBorder(
@@ -410,79 +457,122 @@ class _BrandProductsPageState extends State<BrandProductsPage> {
             ),
             elevation: 2,
             child: Padding(
-              padding: const EdgeInsets.all(8.0),
+              padding: const EdgeInsets.all(12),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Product Image/Icon
+                  // Product Icon and Basic Info
                   Expanded(
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Colors.grey[100],
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Icon(
-                        Icons.shopping_bag,
-                        size: 40,
-                        color: Colors.grey[600],
-                      ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Center(
+                          child: Container(
+                            width: 50,
+                            height: 50,
+                            decoration: BoxDecoration(
+                              color: Colors.grey[100],
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Icon(
+                              Icons.shopping_bag,
+                              size: 30,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+
+                        // Product Name
+                        Text(
+                          product['name'] ?? 'Unnamed Product',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+
+                        const SizedBox(height: 4),
+
+                        // Category
+                        if (product['categories'] != null && product['categories']['name'] != null)
+                          Text(
+                            product['categories']['name'],
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: Colors.blue[600],
+                              fontWeight: FontWeight.w500,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+
+                        // Available Branches
+                        if (branches.isNotEmpty)
+                          Text(
+                            '${branches.length} branch${branches.length > 1 ? 'es' : ''}',
+                            style: const TextStyle(
+                              fontSize: 9,
+                              color: Colors.grey,
+                            ),
+                          ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 6),
-
-                  // Product Name
-                  Text(
-                    product['name'] ?? 'Unnamed Product',
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.center,
-                  ),
-
-                  // SKU
-                  if (product['sku'] != null)
-                    Text(
-                      'SKU: ${product['sku']}',
-                      style: TextStyle(fontSize: 10, color: Colors.grey[600]),
-                    ),
-
-                  // Category
-                  if (product['categories'] != null)
-                    Text(
-                      product['categories']['name'],
-                      style: TextStyle(fontSize: 10, color: Colors.blue[600]),
-                    ),
 
                   // Price and Stock
-                  Text(
-                    '₱${(product['price'] ?? 0).toStringAsFixed(2)}',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.green[700],
-                    ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '₱${(product['price'] ?? 0).toStringAsFixed(2)}',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.green[700],
+                          fontSize: 14,
+                        ),
+                      ),
+
+                      Text(
+                        productStock > 0 ? '$productStock in stock' : 'Out of stock',
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: productStock > 0 ? Colors.grey[600] : Colors.red,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
                   ),
 
-                  Text(
-                    'Stock: $productStock',
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: productStock > 0 ? Colors.grey[600] : Colors.red,
-                    ),
-                  ),
-
-                  // Add to Cart Button
+                  // Add to Cart Section
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       if (inCart)
-                        Text(
-                          'In cart: $cartQuantity',
-                          style: TextStyle(fontSize: 10, color: Colors.green),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.green[50],
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            '$cartQuantity in cart',
+                            style: const TextStyle(
+                              fontSize: 10,
+                              color: Colors.green,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ),
+
                       IconButton(
                         icon: Icon(
-                          Icons.add_circle_outline,
+                          Icons.add_circle,
                           color: productStock > 0 ? Colors.pink : Colors.grey,
+                          size: 24,
                         ),
                         onPressed: productStock > 0
                             ? () => addToCart(product)
