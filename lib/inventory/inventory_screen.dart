@@ -528,10 +528,10 @@ class _InventoryScreenPageState extends State<InventoryPage> {
                   child: Column(
                     children: [
                       _actionButton("Branch Inventory", Icons.inventory_2_outlined,
-                          Colors.pink[300]!, onPressed: () => _showBranchSelector(context)),
+                          Color(0xFFD1828B), onPressed: () => _showBranchSelector(context)),
                       const SizedBox(height: 10),
                       _actionButton("Inventory History", Icons.history,
-                          Colors.pink[200]!, onPressed: () {
+                          Color(0xFFD1828B), onPressed: () {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
@@ -545,7 +545,7 @@ class _InventoryScreenPageState extends State<InventoryPage> {
                           }),
                       const SizedBox(height: 10),
                       _actionButton("View All Products", Icons.list_alt,
-                          Colors.pink[100]!, onPressed: () {
+                          Color(0xFFD1828B), onPressed: () {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
@@ -558,7 +558,7 @@ class _InventoryScreenPageState extends State<InventoryPage> {
                           }),
                       const SizedBox(height: 10),
                       _actionButton("Suppliers", Icons.local_shipping,
-                          Colors.pink[50]!, onPressed: () {
+                          Color(0xFFD1828B), onPressed: () {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
